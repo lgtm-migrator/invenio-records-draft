@@ -89,15 +89,15 @@ Marhsmallow Schema
 ----------------------
 
 Inherit your marshmallow schema from `DraftEnabledSchema`. If you use mixins that
-inherit from Schema (such as StrictKeysMixin) put then after `DraftEnabledSchema`.
+inherit from Schema (such as StrictKeysMixin) put them after `DraftEnabledSchema`.
 
 
 .. code:: python
 
-    from invenio_records_draft.marshmallow import DraftEnabledSchema, always, published_only
+    from invenio_records_draft.marshmallow import DraftEnabledSchema, always, published_only, draft_allowed
 
     class MetadataSchemaV1(DraftEnabledSchema, StrictKeysMixin):
-        title = String(required=always)
+        title = String(required=always, validate=[draft_allowed(Length(max=50))])
         abstract = String(required=published_only)
         # ...
 
@@ -106,6 +106,12 @@ inherit from Schema (such as StrictKeysMixin) put then after `DraftEnabledSchema
 
         metadata = fields.Nested(MetadataSchemaV1)
         # ...
+
+Use `required=always` for properties that are required even in draft, `required=published_only` or
+`required=True` for props that are required only in published records.
+
+Validators (validate=[xxx]) will be removed when validating draft records.
+To enforce them for draft records wrap them with `draft_allowed`.
 
 Loaders
 ------------------
