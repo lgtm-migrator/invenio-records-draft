@@ -2,6 +2,7 @@ import copy
 
 import wrapt
 from marshmallow import Schema
+from functools import wraps
 
 
 class DraftField(wrapt.ObjectProxy):
@@ -12,8 +13,9 @@ class DraftField(wrapt.ObjectProxy):
     @property
     def validators(self):
         if self._self_schema.context.get('draft', False):
-            # TODO: possibility to say which validators are enabled
-            return []
+            return [
+                x for x in self.__wrapped__.validators if getattr(x, '_draft_allowed', None) is True
+            ]
         return self.__wrapped__.validators
 
     @property
@@ -72,4 +74,13 @@ def DraftSchemaWrapper(schema):
     return wrapper
 
 
-__all__ = ('DraftSchemaWrapper', 'DraftEnabledSchema', 'DraftField')
+def draft_allowed(func):
+    @wraps(func)
+    def wrapped(*args, **kwargs):
+        return func(*args, **kwargs)
+
+    wrapped._draft_allowed = True
+    return wrapped
+
+
+__all__ = ('DraftSchemaWrapper', 'DraftEnabledSchema', 'DraftField', 'draft_allowed')

@@ -9,7 +9,7 @@ from invenio_records_draft.marshmallow.draft import (
     DraftEnabledSchema,
     DraftField,
     DraftSchemaWrapper,
-)
+    draft_allowed)
 
 
 def test_draft_field_required():
@@ -106,4 +106,20 @@ def test_validators():
     schema = DraftSchemaWrapper(TestSchema)()
     assert schema.load({'fld': 10}) == ({'fld': 10}, {})
     assert schema.load({'fld': 1}) == ({'fld': 1}, {})
+    assert schema.load({'fld': None}) == ({'fld': None}, {})
+
+
+def test_validators_allowed():
+    class TestSchema(DraftEnabledSchema):
+        fld = Integer(required=True, validate=[draft_allowed(lambda x: x > 1)])
+
+    schema = TestSchema()
+    assert schema.load({'fld': 10}) == ({'fld': 10}, {})
+    assert schema.load({'fld': 1}) == ({}, {'fld': ['Invalid value.']})
+
+    assert schema.load({'fld': None}) == ({}, {'fld': ['Field may not be null.']})
+
+    schema = DraftSchemaWrapper(TestSchema)()
+    assert schema.load({'fld': 10}) == ({'fld': 10}, {})
+    assert schema.load({'fld': 1}) == ({}, {'fld': ['Invalid value.']})
     assert schema.load({'fld': None}) == ({'fld': None}, {})
