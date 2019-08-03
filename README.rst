@@ -70,3 +70,123 @@ are published. The following should hold:
 
     11. Deletion of a draft record does not delete the published record.
 
+
+Usage
+======================
+
+JSON Schema
+------------
+
+Create json schema for the published record, no modifications are required for the
+draft version
+
+Elasticsearch Mapping
+----------------------
+
+TBD.
+
+Marhsmallow Schema
+----------------------
+
+Inherit your marshmallow schema from `DraftEnabledSchema`. If you use mixins that
+inherit from Schema (such as StrictKeysMixin) put then after `DraftEnabledSchema`.
+
+
+.. code:: python
+
+    from invenio_records_draft.marshmallow import DraftEnabledSchema, always, published_only
+
+    class MetadataSchemaV1(DraftEnabledSchema, StrictKeysMixin):
+        title = String(required=always)
+        abstract = String(required=published_only)
+        # ...
+
+    class RecordSchemaV1(DraftEnabledSchema, StrictKeysMixin):
+        """Record schema."""
+
+        metadata = fields.Nested(MetadataSchemaV1)
+        # ...
+
+Loaders
+------------------
+
+When registering schema to loader/serializer, wrap the schema that will be used on draft endpoint
+with `DraftSchemaWrapper`:
+
+.. code:: python
+
+    from invenio_records_draft.marshmallow import DraftSchemaWrapper
+
+    # JSON loader using Marshmallow for data validation
+    json_v1 = marshmallow_loader(DraftSchemaWrapper(MetadataSchemaV1))
+
+Do not provide loader for published endpoint as create/update/patch will never be called on production
+endpoint.
+
+Serializers
+-----------------
+
+In serialization, you will need two serializers:
+
+.. code:: python
+
+    from invenio_records_draft.marshmallow import DraftSchemaWrapper
+
+    json_v1 = JSONSerializer(RecordSchemaV1, replace_refs=True)
+    draft_json_v1 = JSONSerializer(DraftSchemaWrapper(RecordSchemaV1), replace_refs=True)
+
+    json_v1_response = record_responsify(json_v1, 'application/json')
+    json_v1_search = search_responsify(json_v1, 'application/json')
+
+    draft_json_v1_response = record_responsify(draft_json_v1, 'application/json')
+    draft_json_v1_search = search_responsify(draft_json_v1, 'application/json')
+
+
+REST Endpoints
+-----------------
+
+.. code:: python
+
+    RECORDS_REST_ENDPOINTS = {
+        'published': dict(
+            default_endpoint_prefix=True,
+            search_index='records',
+            record_serializers={
+                'application/json': ('my_site.records.serializers'
+                                     ':json_v1_response'),
+            },
+            search_serializers={
+                'application/json': ('my_site.records.serializers'
+                                     ':json_v1_search'),
+            },
+            record_loaders={},
+            list_route='/records/',
+            item_route='/records/<pid(recid):pid_value>',
+            create_permission_factory_imp=deny_all,
+            update_permission_factory_imp=deny_all,
+            delete_permission_factory_imp=deny_all,
+        ),
+        'draft': dict(
+            default_endpoint_prefix=False,
+            search_index='draft-records',
+            record_serializers={
+                'application/json': ('my_site.records.serializers'
+                                     ':draft_json_v1_response'),
+            },
+            search_serializers={
+                'application/json': ('my_site.records.serializers'
+                                     ':draft_json_v1_search'),
+            },
+            record_loaders={
+                'application/json': ('my_site.records.loaders'
+                                     ':draft_json_v1'),
+            },
+            list_route='/draft-records/',
+            item_route='/draft-records/<pid(recid):pid_value>',
+            create_permission_factory_imp=allow_all,
+            read_permission_factory_imp=check_elasticsearch,
+            update_permission_factory_imp=allow_all,
+            delete_permission_factory_imp=allow_all,
+            list_permission_factory_imp=allow_all
+        )
+    }
