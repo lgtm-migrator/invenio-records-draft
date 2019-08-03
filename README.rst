@@ -1,5 +1,20 @@
+========================
 Invenio Records Draft
-=====================
+========================
+
+.. image:: https://img.shields.io/github/license/oarepo/invenio-records-draft.svg
+        :target: https://github.com/oarepo/invenio-records-draft/blob/master/LICENSE
+
+.. image:: https://img.shields.io/travis/oarepo/invenio-records-draft.svg
+        :target: https://travis-ci.org/oarepo/invenio-records-draft
+
+.. image:: https://img.shields.io/coveralls/oarepo/invenio-records-draft.svg
+        :target: https://coveralls.io/r/oarepo/invenio-records-draft
+
+.. image:: https://img.shields.io/pypi/v/invenio-records-draft.svg
+        :target: https://pypi.org/pypi/invenio-records-draft
+
+
 
 **Not yet even alpha, do not use !!!**
 
