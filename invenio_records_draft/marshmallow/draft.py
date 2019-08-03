@@ -1,8 +1,8 @@
 import copy
+from functools import wraps
 
 import wrapt
 from marshmallow import Schema
-from functools import wraps
 
 
 class DraftField(wrapt.ObjectProxy):

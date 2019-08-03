@@ -9,7 +9,8 @@ from invenio_records_draft.marshmallow.draft import (
     DraftEnabledSchema,
     DraftField,
     DraftSchemaWrapper,
-    draft_allowed)
+    draft_allowed,
+)
 
 
 def test_draft_field_required():
