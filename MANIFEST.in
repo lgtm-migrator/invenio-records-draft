@@ -4,6 +4,7 @@ include LICENSE
 recursive-include invenio_records_draft *.py
 
 recursive-exclude tests *.py
+recursive-exclude sample *
 
 exclude .coveragerc
 exclude .pydocstyle
@@ -11,4 +12,5 @@ exclude pytest.ini
 exclude *.yml
 exclude run-tests.sh
 exclude tests
+exclude sample
 include *.rst
