@@ -74,11 +74,37 @@ are published. The following should hold:
 Usage
 ======================
 
+.. code:: bash
+
+    pip install @oarepo/invenio-records-draft
+
 JSON Schema
 ------------
 
 Create json schema for the published record, no modifications are required for the
-draft version
+draft version.
+
+In the configuration (invenio.cfg or your module's config) register the schema:
+
+
+.. code:: python
+
+    INVENIO_RECORD_DRAFT_SCHEMAS = [
+        {
+            'published_schema': 'records/record-v1.0.0.json',
+            'draft_schema': 'records/draft-record-v1.0.0.json'
+        }
+    ]
+
+Run in terminal
+
+.. code:: bash
+
+    invenio draft make-schemas
+
+This command will create a draft schema in `INVENIO_RECORD_DRAFT_SCHEMAS_DIR`, default value
+is `var/instance/draft_schemas/`
+
 
 Elasticsearch Mapping
 ----------------------

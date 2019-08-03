@@ -54,11 +54,20 @@ setup(
     zip_safe=False,
     packages=['invenio_records_draft'],
     entry_points={
+        'flask.commands': [
+            'draft = invenio_records_draft.cli:draft',
+        ],
+        'invenio_base.api_apps': [
+            'draft = invenio_records_draft.ext:InvenioRecordsDraft',
+        ],
+        'invenio_base.apps': [
+            'draft = invenio_records_draft.ext:InvenioRecordsDraft',
+        ],
     },
     include_package_data=True,
     setup_requires=setup_requires,
     extras_require=extras_require,
-        install_requires=install_requires,
+    install_requires=install_requires,
     tests_require=tests_require,
     platforms='any',
     classifiers=[
