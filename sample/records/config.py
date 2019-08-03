@@ -12,6 +12,7 @@ from __future__ import absolute_import, print_function
 from invenio_indexer.api import RecordIndexer
 from invenio_records_rest.facets import terms_filter
 from invenio_records_rest.utils import allow_all, check_elasticsearch
+
 from invenio_search import RecordsSearch
 
 

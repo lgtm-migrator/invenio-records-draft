@@ -76,7 +76,7 @@ Usage
 
 .. code:: bash
 
-    pip install @oarepo/invenio-records-draft
+    pip install oarepo-invenio-records-draft
 
 JSON Schema
 ------------
