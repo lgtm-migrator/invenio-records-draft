@@ -71,4 +71,4 @@ dist/
 
 run\.sh
 
-pytest-local\.ini
+.pytest-local\.ini

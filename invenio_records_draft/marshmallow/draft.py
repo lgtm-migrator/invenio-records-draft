@@ -5,6 +5,15 @@ import wrapt
 from marshmallow import Schema
 
 
+class _Bool():
+    def __bool__(self):
+        return True
+
+
+always = _Bool()
+published_only = _Bool()
+
+
 class DraftField(wrapt.ObjectProxy):
     def __init__(self, schema, field):
         super().__init__(field)
@@ -22,14 +31,14 @@ class DraftField(wrapt.ObjectProxy):
     @property
     def required(self):
         if self._self_schema.context.get('draft', False):
-            # TODO: possibility to say if required in draft mode
+            if isinstance(self.__wrapped__.required, _Bool):
+                return self.__wrapped__.required is always
             return False
         return self.__wrapped__.required
 
     @property
     def allow_none(self):
         if self._self_schema.context.get('draft', False):
-            # TODO: possibility to say if none allowed in draft mode
             return True
         return self.__wrapped__.allow_none
 
@@ -84,4 +93,4 @@ def draft_allowed(func):
     return wrapped
 
 
-__all__ = ('DraftSchemaWrapper', 'DraftEnabledSchema', 'DraftField', 'draft_allowed')
+__all__ = ('DraftSchemaWrapper', 'DraftEnabledSchema', 'DraftField', 'draft_allowed', 'always', 'published_only')

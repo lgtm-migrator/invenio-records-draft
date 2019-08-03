@@ -10,7 +10,7 @@ from invenio_records_draft.marshmallow.draft import (
     DraftField,
     DraftSchemaWrapper,
     draft_allowed,
-)
+    always, published_only)
 
 
 def test_draft_field_required():
@@ -19,6 +19,57 @@ def test_draft_field_required():
         'draft': False
     }
     fld = DraftField(schema, Integer(required=True, validators=[], allow_none=False))
+    assert fld.required
+    assert not fld.allow_none
+
+    assert fld.serialize('a', {'a': 1}) == 1
+    assert fld.deserialize(1) == 1
+    with pytest.raises(ValidationError):
+        fld.deserialize(missing_)
+
+    schema.context = {
+        'draft': True
+    }
+    assert not fld.required
+    assert fld.allow_none
+
+    assert fld.serialize('a', {'a': 1}) == 1
+    assert fld.deserialize(1) == 1
+    assert fld.deserialize(None) is None
+
+
+def test_draft_field_required_always():
+    schema = Mock()
+    schema.context = {
+        'draft': False
+    }
+    fld = DraftField(schema, Integer(required=always, validators=[], allow_none=False))
+    assert fld.required
+    assert not fld.allow_none
+
+    assert fld.serialize('a', {'a': 1}) == 1
+    assert fld.deserialize(1) == 1
+    with pytest.raises(ValidationError):
+        fld.deserialize(missing_)
+
+    schema.context = {
+        'draft': True
+    }
+    assert fld.required
+    assert fld.allow_none
+    #
+    # assert fld.serialize('a', {'a': 1}) == 1
+    # assert fld.deserialize(1) == 1
+    with pytest.raises(ValidationError):
+        fld.deserialize(missing_)
+
+
+def test_draft_field_required_published_only():
+    schema = Mock()
+    schema.context = {
+        'draft': False
+    }
+    fld = DraftField(schema, Integer(required=published_only, validators=[], allow_none=False))
     assert fld.required
     assert not fld.allow_none
 
