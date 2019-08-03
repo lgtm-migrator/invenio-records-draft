@@ -14,7 +14,8 @@ class DraftField(wrapt.ObjectProxy):
     def validators(self):
         if self._self_schema.context.get('draft', False):
             return [
-                x for x in self.__wrapped__.validators if getattr(x, '_draft_allowed', None) is True
+                x for x in self.__wrapped__.validators
+                if getattr(x, '_draft_allowed', None) is True
             ]
         return self.__wrapped__.validators
 
