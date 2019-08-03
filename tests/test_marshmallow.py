@@ -5,9 +5,11 @@ from marshmallow import Schema, ValidationError
 from marshmallow.fields import Integer, Nested
 from marshmallow.utils import missing as missing_
 
-from invenio_records_draft.marshmallow.draft import (DraftEnabledSchema,
-                                                     DraftField,
-                                                     DraftSchemaWrapper)
+from invenio_records_draft.marshmallow.draft import (
+    DraftEnabledSchema,
+    DraftField,
+    DraftSchemaWrapper,
+)
 
 
 def test_draft_field_required():

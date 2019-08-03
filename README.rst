@@ -27,7 +27,7 @@ are published. The following should hold:
     6. Published records can not be directly created/updated/patched. Draft records can be
        created/updated/patched.
 
-    7. The serialized represetation of a published record contains a section named `links`.
+    7. GET on a published record returns top-level section and HTTP header `links`.
        Apart from `self` the section contains:
 
         a. `draft` - a url that links to the "draft" version of the record. This url is present
@@ -38,8 +38,7 @@ are published. The following should hold:
         c. `unpublish` - URL to a handler that creates a draft version of the record
            if it does not exist, removes the published version and then returns HTTP 302 to the draft.
 
-    8. The serialized represetation of a draft record contains a section named `links`.
-       Apart from `self` the section contains:
+    8. On a draft record the `links` also contain:
 
         a. `published` - a url that links to the "published" version of the record. This url is present
            only if the published version of the record exists

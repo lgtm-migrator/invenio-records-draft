@@ -1,0 +1,60 @@
+dist: xenial
+
+addons:
+  postgresql: 9.6
+  # TODO: Add mysql addon as well
+
+services:
+  - postgresql
+
+notifications:
+  email: false
+
+sudo: false
+
+language: python
+
+matrix:
+  fast_finish: true
+
+cache:
+  - pip
+
+env:
+  global:
+    - POSTGRESQL_SQLALCHEMY_DATABASE_URI="postgresql+psycopg2://postgres@localhost:5432/invenio"
+  matrix:
+    - REQUIREMENTS=release EXTRAS=all,postgresql,tests SQLALCHEMY_DATABASE_URI=$POSTGRESQL_SQLALCHEMY_DATABASE_URI
+    - REQUIREMENTS=release EXTRAS=all,sqlite,tests
+
+python:
+  - "3.6"
+  - "3.7"
+
+before_install:
+  - "travis_retry pip install --upgrade pip setuptools py"
+  - "travis_retry pip install twine wheel coveralls requirements-builder"
+  - "requirements-builder -e $EXTRAS --level=min setup.py > .travis-lowest-requirements.txt"
+  - "requirements-builder -e $EXTRAS --level=pypi setup.py > .travis-release-requirements.txt"
+
+install:
+  - "travis_retry pip install -r .travis-${REQUIREMENTS}-requirements.txt"
+  - "travis_retry pip install -e .[$EXTRAS]"
+
+script:
+  - "./run-tests.sh"
+
+after_success:
+  - coveralls
+
+#deploy:
+#  provider: pypi
+#  user: TODO: PYPIUSERNAME
+#  password:
+#    secure: TODO: PYPISECUREHASH
+#  distributions: "compile_catalog sdist bdist_wheel"
+#  on:
+#    tags: true
+#    python: "3.6"
+#    repo: cis/cis-theses-repository
+#    condition: $DEPLOY = true

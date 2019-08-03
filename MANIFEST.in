@@ -1,0 +1,14 @@
+# -*- coding: utf-8 -*-
+
+include LICENSE
+recursive-include invenio_records_draft *.py
+
+recursive-exclude tests *.py
+
+exclude .coveragerc
+exclude .pydocstyle
+exclude pytest.ini
+exclude *.yml
+exclude run-tests.sh
+exclude tests
+include *.rst
