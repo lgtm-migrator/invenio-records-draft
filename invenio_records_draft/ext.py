@@ -11,10 +11,13 @@ class InvenioRecordsDraftState(object):
         self.app = app
 
     def make_draft_schema(self, published_schema, draft_schema):
-        schema_data = current_jsonschemas.get_schema(published_schema, with_refs=False, resolved=True)
+        schema_data = current_jsonschemas.get_schema(
+            published_schema, with_refs=False, resolved=True)
         self.remove_required(schema_data)
 
-        target_schema = os.path.join(self.app.config['INVENIO_RECORD_DRAFT_SCHEMAS_DIR'], draft_schema)
+        target_schema = os.path.join(
+            self.app.config['INVENIO_RECORD_DRAFT_SCHEMAS_DIR'],
+            draft_schema)
         target_dir = os.path.dirname(target_schema)
 
         if not os.path.exists(target_dir):
@@ -47,7 +50,8 @@ class InvenioRecordsDraft(object):
         app.extensions['invenio-records-draft'] = InvenioRecordsDraftState(app)
 
     def init_config(self, app):
-        app.config['INVENIO_RECORD_DRAFT_SCHEMAS_DIR'] = os.path.join(app.instance_path, 'draft_schemas')
+        app.config['INVENIO_RECORD_DRAFT_SCHEMAS_DIR'] = os.path.join(
+            app.instance_path, 'draft_schemas')
 
 
 @app_loaded.connect
@@ -60,7 +64,9 @@ def register_schemas(sender, app=None, **kwargs):
 
             full_path = os.path.join(app.config['INVENIO_RECORD_DRAFT_SCHEMAS_DIR'], draft_schema)
             if not os.path.exists(full_path):
-                print('Draft schema %s not found. Please call invenio draft make-schemas' % draft_schema)
+                print('Draft schema %s not found. '
+                      'Please call invenio draft make-schemas' % draft_schema)
                 continue
 
-            current_jsonschemas.register_schema(app.config['INVENIO_RECORD_DRAFT_SCHEMAS_DIR'], draft_schema)
+            current_jsonschemas.register_schema(app.config['INVENIO_RECORD_DRAFT_SCHEMAS_DIR'],
+                                                draft_schema)
