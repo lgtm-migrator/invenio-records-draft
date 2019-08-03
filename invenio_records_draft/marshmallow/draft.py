@@ -93,4 +93,5 @@ def draft_allowed(func):
     return wrapped
 
 
-__all__ = ('DraftSchemaWrapper', 'DraftEnabledSchema', 'DraftField', 'draft_allowed', 'always', 'published_only')
+__all__ = ('DraftSchemaWrapper', 'DraftEnabledSchema', 'DraftField',
+           'draft_allowed', 'always', 'published_only')
