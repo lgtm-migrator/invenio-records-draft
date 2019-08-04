@@ -20,30 +20,30 @@ setup(
     platforms='any',
     entry_points={
         'invenio_base.apps': [
-            'records = sample.records:Records',
+            'records = records:Records',
         ],
         'invenio_base.blueprints': [
-            'records = sample.theme.views:blueprint',
-            'records_records = sample.records.views:blueprint',
+            'records = theme.views:blueprint',
+            'records_records = records.views:blueprint',
         ],
         'invenio_assets.webpack': [
-            'sample_theme = sample.theme.webpack:theme',
+            'sample_theme = theme.webpack:theme',
         ],
         'invenio_config.module': [
-            'sample = sample.config',
-            'records = sample.records.config',
+            'sample = config',
+            'records = records.config',
         ],
         'invenio_i18n.translations': [
             'messages = sample',
         ],
         'invenio_base.api_apps': [
-            'sample = sample.records:Records',
+            'sample = records:Records',
          ],
         'invenio_jsonschemas.schemas': [
-            'sample = sample.records.jsonschemas'
+            'sample = records.jsonschemas'
         ],
         'invenio_search.mappings': [
-            'records = sample.records.mappings'
+            'records = records.mappings'
         ],
     },
     classifiers=[

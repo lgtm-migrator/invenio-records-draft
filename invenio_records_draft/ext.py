@@ -3,6 +3,8 @@ import os
 
 from invenio_base.signals import app_loaded
 from invenio_jsonschemas import current_jsonschemas
+from invenio_search import current_search
+from invenio_search.utils import schema_to_index
 
 
 class InvenioRecordsDraftState(object):
@@ -27,6 +29,28 @@ class InvenioRecordsDraftState(object):
             f.write(json.dumps(schema_data, indent=4, ensure_ascii=False))
 
         return target_schema
+
+    def make_draft_mapping(self, published_schema, draft_schema):
+        published_index = schema_to_index(published_schema)[0]
+        draft_index = schema_to_index(draft_schema)[0]
+
+        published_mapping_file = current_search.mappings[published_index]
+
+        with open(published_mapping_file, 'r') as f:
+            mapping_data = json.load(f)
+
+        target_mapping = os.path.join(
+            self.app.config['INVENIO_RECORD_DRAFT_MAPPINGS_DIR'],
+            f'{draft_index}.json')
+        target_dir = os.path.dirname(target_mapping)
+
+        if not os.path.exists(target_dir):
+            os.makedirs(target_dir)
+
+        with open(target_mapping, 'w') as f:
+            f.write(json.dumps(mapping_data, indent=4, ensure_ascii=False))
+
+        return target_mapping
 
     def remove_required(self, el):
         if isinstance(el, list):
@@ -53,9 +77,12 @@ class InvenioRecordsDraft(object):
         app.config['INVENIO_RECORD_DRAFT_SCHEMAS_DIR'] = os.path.join(
             app.instance_path, 'draft_schemas')
 
+        app.config['INVENIO_RECORD_DRAFT_MAPPINGS_DIR'] = os.path.join(
+            app.instance_path, 'draft_mappings')
+
 
 @app_loaded.connect
-def register_schemas(sender, app=None, **kwargs):
+def register_schemas_and_mappings(sender, app=None, **kwargs):
     with app.app_context():
         for cfg in app.config['INVENIO_RECORD_DRAFT_SCHEMAS']:
             draft_schema = cfg['draft_schema']
