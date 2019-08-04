@@ -210,8 +210,9 @@ def make_links_factory(endpoint_name):
 def make_draft_minter(draft_pid_type, original_minter):
     def draft_minter(record_uuid, data):
         with db.session.begin_nested():
-            pid = PersistentIdentifier.query.filter_by(pid_type=original_minter,
-                                                       object_type='rec', object_uuid=record_uuid).one_or_none()
+            pid = PersistentIdentifier.query.filter_by(
+                pid_type=original_minter, object_type='rec',
+                object_uuid=record_uuid).one_or_none()
             if pid:
                 # published version already exists with the same record_uuid => raise an exception,
                 # draft and published version can never point to the same invenio record
