@@ -13,7 +13,7 @@ def draft():
 @draft.command('make-schemas')
 @with_appcontext
 def make_schemas():
-    if 'INVENIO_RECORD_DRAFT_SCHEMAS' not in current_app.config:
+    if 'INVENIO_RECORD_DRAFT_SCHEMAS' not in current_app.config:    # pragma: no cover
         print('Please set up INVENIO_RECORD_DRAFT_SCHEMAS in the configuration')
         return
 
@@ -23,7 +23,7 @@ def make_schemas():
         published_schema = cfg['published_schema']
         draft_schema = cfg['draft_schema']
         if published_schema in schemas:
-            continue
+            continue        # pragma: no cover
         schemas.add(published_schema)
         output_path = current_drafts.make_draft_schema(published_schema, draft_schema)
         print('Created schema', output_path)

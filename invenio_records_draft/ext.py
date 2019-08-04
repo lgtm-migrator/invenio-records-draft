@@ -60,10 +60,10 @@ def register_schemas(sender, app=None, **kwargs):
         for cfg in app.config['INVENIO_RECORD_DRAFT_SCHEMAS']:
             draft_schema = cfg['draft_schema']
             if draft_schema in current_jsonschemas.schemas:
-                continue
+                continue        # pragma: no cover
 
             full_path = os.path.join(app.config['INVENIO_RECORD_DRAFT_SCHEMAS_DIR'], draft_schema)
-            if not os.path.exists(full_path):
+            if not os.path.exists(full_path):       # pragma: no cover
                 print('Draft schema %s not found. '
                       'Please call invenio draft make-schemas' % draft_schema)
                 continue
