@@ -113,7 +113,7 @@ is `var/instance/draft_schemas/` and will print out the created schema path:
 
 .. code:: bash
 
-    ...var/instance/draft_schemas/drafts/records/record-v1.0.0.json
+    ...var/instance/draft_schemas/draft/records/record-v1.0.0.json
 
 To check that the schemas are working, run
 
@@ -122,14 +122,50 @@ To check that the schemas are working, run
     invenio run <https etc>
 
     curl https://localhost:5000/schemas/records/record-v1.0.0.json
-    curl https://localhost:5000/schemas/drafts/records/record-v1.0.0.json
+    curl https://localhost:5000/schemas/draft/records/record-v1.0.0.json
 
-Note the extra prefix "/drafts/".
+Note the extra prefix "/draft/".
 
 Elasticsearch Mapping
 ----------------------
 
-TBD.
+To create elasticsearch schemas and aliases for the draft records, run:
+
+.. code:: bash
+
+    invenio draft make-mappings
+    invenio index init --force
+
+The first command creates
+
+.. code:: bash
+
+    ...var/instance/draft_mappings/draft-records-record-v1.0.0.json
+
+which is a patched version of the "published" records mapping with an extra section
+for validation errors
+
+.. code:: json
+
+    {
+      "_draft_validation": {
+        "type": "object",
+        "properties": {
+          "valid": {
+            "type": "boolean"
+          },
+          "errors": {
+            "type": "object",
+            "enabled": false
+          }
+        }
+      }
+    }
+
+The second deploys the schema to elasticsearch as `draft-records-record-v1.0.0`
+and creates alias `draft-records`.
+
+To check that the command worked GET http://localhost:9200/draft-records-record-v1.0.0
 
 Marhsmallow Schema
 ----------------------

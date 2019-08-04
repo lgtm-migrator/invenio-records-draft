@@ -14,7 +14,7 @@ from invenio_jsonschemas import InvenioJSONSchemas
 from invenio_search import InvenioSearch
 from sqlalchemy_utils import create_database, database_exists
 
-from invenio_records_draft.cli import make_schemas
+from invenio_records_draft.cli import make_mappings, make_schemas
 from invenio_records_draft.ext import InvenioRecordsDraft, register_schemas_and_mappings
 from sample.records import Records
 
@@ -101,6 +101,17 @@ def db(app):
 def schemas(app):
     runner = app.test_cli_runner()
     result = runner.invoke(make_schemas)
+    assert result.exit_code == 0
+
+    # trigger registration of new schemas, normally performed
+    # via app_loaded signal that is not emitted in tests
+    register_schemas_and_mappings(app, app=app)
+
+
+@pytest.fixture
+def mappings(app, schemas):
+    runner = app.test_cli_runner()
+    result = runner.invoke(make_mappings)
     assert result.exit_code == 0
 
     # trigger registration of new schemas, normally performed

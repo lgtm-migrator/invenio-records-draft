@@ -37,10 +37,8 @@ def make_mappings():
     schemas = set()
 
     for cfg in current_app.config['INVENIO_RECORD_DRAFT_SCHEMAS']:
-        published_schema = cfg['published_schema']
-        draft_schema = cfg['draft_schema']
-        if published_schema in schemas:
+        if id(cfg) in schemas:
             continue        # pragma: no cover
-        schemas.add(published_schema)
-        output_path = current_drafts.make_draft_mapping(published_schema, draft_schema)
+        schemas.add(id(cfg))
+        output_path = current_drafts.make_draft_mapping(cfg)
         print('Created mapping', output_path)

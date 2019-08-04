@@ -1,0 +1,14 @@
+{
+  "_draft_validation": {
+    "type": "object",
+    "properties": {
+      "valid": {
+        "type": "boolean"
+      },
+      "errors": {
+        "type": "object",
+        "enabled": false
+      }
+    }
+  }
+}
