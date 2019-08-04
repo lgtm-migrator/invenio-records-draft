@@ -78,7 +78,9 @@ class InvenioRecordsDraftState(object):
         else:
             config = {**config}
 
-        config['draft_schema'] = self.draft_schema(config['published_schema'])
+        if 'draft_schema' not in config:
+            config['draft_schema'] = self.draft_schema(config['published_schema'])
+
         return config
 
 
