@@ -48,7 +48,9 @@ class InvenioRecordsDraftState(object):
             os.makedirs(target_dir)
 
         # add _draft_validation mapping
-        draft_mapping = json.loads(pkgutil.get_data('invenio_records_draft', f'/mappings/v{ES_VERSION[0]}/draft.json'))
+        draft_mapping = json.loads(
+            pkgutil.get_data('invenio_records_draft',
+                             f'/mappings/v{ES_VERSION[0]}/draft.json'))
 
         first_mapping = list(mapping_data['mappings'].values())[0]
         first_mapping['properties'].update(draft_mapping)
@@ -159,10 +161,12 @@ def register_schemas_and_mappings(sender, app=None, **kwargs):
             for alias_name, alias_mappings in list(current_search.aliases.items()):
                 if published_index in alias_mappings:
                     if mapping_prefix and alias_name.startswith(mapping_prefix):
-                        draft_alias_name = mapping_prefix + 'draft-' + alias_name[len(mapping_prefix):]
+                        draft_alias_name = mapping_prefix + 'draft-' + \
+                                           alias_name[len(mapping_prefix):]
                     else:
                         draft_alias_name = 'draft-' + alias_name
 
                     if draft_alias_name not in current_search.aliases:
                         current_search.aliases[draft_alias_name] = {}
-                    current_search.aliases[draft_alias_name][draft_index] = draft_mapping_file
+                    current_search.aliases[draft_alias_name][draft_index] = \
+                        draft_mapping_file
