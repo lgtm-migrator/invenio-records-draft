@@ -1,3 +1,4 @@
+import json
 import re
 import uuid
 
@@ -10,7 +11,7 @@ from invenio_records import Record
 from invenio_search import current_search_client
 
 from invenio_records_draft.endpoints import draft_enabled_endpoint
-from sample.records.marshmallow import RecordSchemaV1, MetadataSchemaV1
+from sample.records.marshmallow import MetadataSchemaV1, RecordSchemaV1
 from tests.helpers import header_links, login
 
 
@@ -159,5 +160,20 @@ def test_draft_endpoint_create(app, db, schemas, mappings, prepare_es,
         json={
             '$schema': current_jsonschemas.path_to_url('draft/records/record-v1.0.0.json')
         })
-    print(resp.data)
     assert resp.status_code == 201
+    record_link = resp.json['links']['self']
+    current_search_client.indices.flush()
+
+    resp = client.get(draft_records_url)
+    assert resp.status_code == 200
+    assert len(resp.json['hits']['hits']) == 1
+    first_hit = resp.json['hits']['hits'][0]
+    assert first_hit['links']['self'] == record_link
+
+    resp = client.get(record_link)
+    assert resp.status_code == 200
+    assert resp.json['metadata'] == {
+        "$schema": "https://localhost/schemas/draft/records/record-v1.0.0.json",
+        "id": "1"
+    }
+    print(json.dumps(resp.json, indent=4))

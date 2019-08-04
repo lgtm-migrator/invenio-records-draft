@@ -1,12 +1,16 @@
-from flask import url_for, current_app
-from invenio_base.signals import app_loaded, app_created
+from flask import current_app, url_for
+from invenio_base.signals import app_created, app_loaded
 from invenio_db import db
 from invenio_pidstore import current_pidstore
 from invenio_pidstore.fetchers import FetchedPID
 from invenio_pidstore.models import PersistentIdentifier, PIDStatus
 from invenio_records import Record
 from invenio_records_rest.loaders import marshmallow_loader
-from invenio_records_rest.serializers import JSONSerializer, record_responsify, search_responsify
+from invenio_records_rest.serializers import (
+    JSONSerializer,
+    record_responsify,
+    search_responsify,
+)
 from invenio_records_rest.utils import allow_all, deny_all, obj_or_import_string
 
 from invenio_records_draft.marshmallow import DraftSchemaWrapper
@@ -209,23 +213,16 @@ def make_draft_minter(draft_pid_type, original_minter):
             pid = PersistentIdentifier.query.filter_by(pid_type=original_minter,
                                                        object_type='rec', object_uuid=record_uuid).one_or_none()
             if pid:
-                current_status = pid.status
+                # published version already exists with the same record_uuid => raise an exception,
+                # draft and published version can never point to the same invenio record
+                raise ValueError('Draft and published version can never point to the same invenio record')
             else:
-                # create a new pid but set its status to NEW - it will not appear in GETs
+                # create a new pid as if the record were published
                 pid = current_pidstore.minters[original_minter](record_uuid, data)
-                current_status = pid.status
-                pid.status = PIDStatus.NEW
+                # but change the pid type to draft
+                pid.pid_type = draft_pid_type
                 db.session.add(pid)
-
-            draft_pid = PersistentIdentifier.create(
-                draft_pid_type,
-                pid.pid_value,
-                pid_provider=None,
-                object_type=pid.object_type,
-                object_uuid=pid.object_uuid,
-                status=current_status,
-            )
-        return draft_pid
+                return pid
 
     return draft_minter
 

@@ -6,11 +6,11 @@ import sys
 from collections import namedtuple
 
 import pytest
-from flask import Flask, url_for, make_response
+from flask import Flask, make_response, url_for
 from flask.testing import FlaskClient
 from flask_login import LoginManager, login_user
 from flask_principal import Principal
-from invenio_accounts.models import User, Role
+from invenio_accounts.models import Role, User
 from invenio_base.signals import app_loaded
 from invenio_db import InvenioDB
 from invenio_db import db as _db
