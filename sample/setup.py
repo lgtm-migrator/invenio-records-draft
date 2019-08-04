@@ -23,18 +23,11 @@ setup(
             'records = records:Records',
         ],
         'invenio_base.blueprints': [
-            'records = theme.views:blueprint',
             'records_records = records.views:blueprint',
-        ],
-        'invenio_assets.webpack': [
-            'sample_theme = theme.webpack:theme',
         ],
         'invenio_config.module': [
             'sample = config',
             'records = records.config',
-        ],
-        'invenio_i18n.translations': [
-            'messages = sample',
         ],
         'invenio_base.api_apps': [
             'sample = records:Records',

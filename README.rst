@@ -90,9 +90,15 @@ In the configuration (invenio.cfg or your module's config) register the schema:
 .. code:: python
 
     INVENIO_RECORD_DRAFT_SCHEMAS = [
+        'records/record-v1.0.0.json',
+    ]
+
+    # or
+
+    INVENIO_RECORD_DRAFT_SCHEMAS = [
         {
             'published_schema': 'records/record-v1.0.0.json',
-            'draft_schema': 'records/draft-record-v1.0.0.json'
+            # ... other options (not yet used)
         }
     ]
 
@@ -103,7 +109,11 @@ Run in terminal
     invenio draft make-schemas
 
 This command will create a draft schema in `INVENIO_RECORD_DRAFT_SCHEMAS_DIR`, default value
-is `var/instance/draft_schemas/`
+is `var/instance/draft_schemas/` and will print out the created schema path:
+
+.. code:: bash
+
+    ...var/instance/draft_schemas/drafts/records/record-v1.0.0.json
 
 To check that the schemas are working, run
 
@@ -112,8 +122,9 @@ To check that the schemas are working, run
     invenio run <https etc>
 
     curl https://localhost:5000/schemas/records/record-v1.0.0.json
-    curl https://localhost:5000/schemas/records/draft-record-v1.0.0.json
+    curl https://localhost:5000/schemas/drafts/records/record-v1.0.0.json
 
+Note the extra prefix "/drafts/".
 
 Elasticsearch Mapping
 ----------------------
