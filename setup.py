@@ -34,6 +34,12 @@ tests_require = [
 
 extras_require = {
     'tests': tests_require,
+    'postgresql': [
+        'invenio[postgresql]~={version}'.format(version=INVENIO_VERSION),
+    ],
+    'sqlite': [
+        'invenio[sqlite]~={version}'.format(version=INVENIO_VERSION),
+    ]
 }
 
 setup_requires = [
