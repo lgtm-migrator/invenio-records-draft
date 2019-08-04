@@ -9,7 +9,7 @@ readme = open('README.rst').read()
 INVENIO_VERSION = "3.1.1"
 
 install_requires = [
-    'invenio[base,metadata]~={version}'.format(version=INVENIO_VERSION),
+    'invenio[base,metadata,elasticsearch6]~={version}'.format(version=INVENIO_VERSION),
     'wrapt>=1.11.2'
 ]
 
