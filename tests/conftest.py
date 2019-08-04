@@ -3,20 +3,33 @@
 import os
 import shutil
 import sys
+from collections import namedtuple
 
 import pytest
-from flask import Flask
+from flask import Flask, make_response, url_for
 from flask.testing import FlaskClient
+from flask_login import LoginManager, login_user
+from flask_principal import Principal
+from invenio_accounts.models import Role, User
+from invenio_base.signals import app_loaded
 from invenio_db import InvenioDB
 from invenio_db import db as _db
 from invenio_indexer import InvenioIndexer
 from invenio_jsonschemas import InvenioJSONSchemas
-from invenio_search import InvenioSearch
+from invenio_pidstore import InvenioPIDStore
+from invenio_records import InvenioRecords
+from invenio_records_rest import InvenioRecordsREST
+from invenio_records_rest.utils import PIDConverter
+from invenio_records_rest.views import create_blueprint_from_app
+from invenio_rest import InvenioREST
+from invenio_search import InvenioSearch, current_search_client
+from invenio_search.cli import destroy, init
 from sqlalchemy_utils import create_database, database_exists
 
 from invenio_records_draft.cli import make_mappings, make_schemas
 from invenio_records_draft.ext import InvenioRecordsDraft, register_schemas_and_mappings
 from sample.records import Records
+from tests.helpers import set_identity
 
 
 class JsonClient(FlaskClient):
@@ -46,7 +59,7 @@ def base_app():
         SQLALCHEMY_DATABASE_URI=os.environ.get(
             'SQLALCHEMY_DATABASE_URI',
             'sqlite:///:memory:'),
-        SERVER_NAME='localhost',
+        SERVER_NAME='localhost:5000',
         SECURITY_PASSWORD_SALT='TEST_SECURITY_PASSWORD_SALT',
         SECRET_KEY='TEST_SECRET_KEY',
         INVENIO_INSTANCE_PATH=instance_path,
@@ -69,6 +82,35 @@ def app(base_app):
 
     base_app._internal_jsonschemas = InvenioJSONSchemas(base_app)
     Records(base_app)
+    InvenioREST(base_app)
+    InvenioRecordsREST(base_app)
+    InvenioRecords(base_app)
+    InvenioPIDStore(base_app)
+    base_app.url_map.converters['pid'] = PIDConverter
+
+    base_app.register_blueprint(create_blueprint_from_app(base_app))
+
+    principal = Principal(base_app)
+
+    login_manager = LoginManager()
+    login_manager.init_app(base_app)
+    login_manager.login_view = 'login'
+
+    @login_manager.user_loader
+    def basic_user_loader(user_id):
+        user_obj = User.query.get(int(user_id))
+        return user_obj
+
+    @base_app.route('/test/login/<int:id>', methods=['GET', 'POST'])
+    def test_login(id):
+        print("test: logging user with id", id)
+        response = make_response()
+        user = User.query.get(id)
+        login_user(user)
+        set_identity(user)
+        return response
+
+    app_loaded.send(None, app=base_app)
 
     with base_app.app_context():
         yield base_app
@@ -117,3 +159,54 @@ def mappings(app, schemas):
     # trigger registration of new schemas, normally performed
     # via app_loaded signal that is not emitted in tests
     register_schemas_and_mappings(app, app=app)
+
+
+@pytest.fixture
+def published_records_url(app):
+    return url_for('invenio_records_rest.published_records_list')
+
+
+@pytest.fixture
+def draft_records_url(app):
+    return url_for('invenio_records_rest.draft_records_list')
+
+
+TestUsers = namedtuple('TestUsers', ['u1', 'u2', 'u3', 'r1', 'r2'])
+
+
+@pytest.fixture()
+def test_users(app, db):
+    """Returns named tuple (u1, u2, u3, r1, r2)."""
+    with db.session.begin_nested():
+        r1 = Role(name='role1')
+        r2 = Role(name='role2')
+
+        u1 = User(id=1, email='1@test.com', active=True, roles=[r1])
+        u2 = User(id=2, email='2@test.com', active=True, roles=[r1, r2])
+        u3 = User(id=3, email='3@test.com', active=True, roles=[r2])
+
+        db.session.add(u1)
+        db.session.add(u2)
+        db.session.add(u3)
+
+        db.session.add(r1)
+        db.session.add(r2)
+
+    return TestUsers(u1, u2, u3, r1, r2)
+
+
+@pytest.fixture()
+def prepare_es(app, db):
+    runner = app.test_cli_runner()
+    result = runner.invoke(destroy, ['--yes-i-know', '--force'])
+    if result.exit_code:
+        print(result.output)
+    assert result.exit_code == 0
+    result = runner.invoke(init)
+    if result.exit_code:
+        print(result.output)
+    assert result.exit_code == 0
+    aliases = current_search_client.indices.get_alias("*")
+
+    assert 'test-records-record-v1.0.0' in aliases
+    assert 'test-draft-records-record-v1.0.0' in aliases
