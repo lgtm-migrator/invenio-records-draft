@@ -28,8 +28,8 @@ tests_require = [
     'pytest-cov>=1.8.0',
     'pytest-random-order>=0.5.4',
     'pytest-pep8>=1.0.6',
-    'invenio-accounts>1.0.0',
-    'invenio-access>1.0.0'
+    'invenio-accounts>=1.0.0',
+    'invenio-access>=1.0.0'
 ]
 
 extras_require = {
