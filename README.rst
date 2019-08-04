@@ -105,6 +105,15 @@ Run in terminal
 This command will create a draft schema in `INVENIO_RECORD_DRAFT_SCHEMAS_DIR`, default value
 is `var/instance/draft_schemas/`
 
+To check that the schemas are working, run
+
+.. code:: bash
+
+    invenio run <https etc>
+
+    curl https://localhost:5000/schemas/records/record-v1.0.0.json
+    curl https://localhost:5000/schemas/records/draft-record-v1.0.0.json
+
 
 Elasticsearch Mapping
 ----------------------
