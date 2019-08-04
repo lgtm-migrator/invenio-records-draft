@@ -2,6 +2,7 @@
 
 include LICENSE
 recursive-include invenio_records_draft *.py
+recursive-include invenio_records_draft *.json
 
 recursive-exclude tests *.py
 recursive-exclude sample *
