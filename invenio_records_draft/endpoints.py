@@ -216,7 +216,8 @@ def make_draft_minter(draft_pid_type, original_minter):
             if pid:
                 # published version already exists with the same record_uuid => raise an exception,
                 # draft and published version can never point to the same invenio record
-                raise ValueError('Draft and published version can never point to the same invenio record')
+                raise ValueError('Draft and published version '
+                                 'can never point to the same invenio record')
             else:
                 # create a new pid as if the record were published
                 pid = current_pidstore.minters[original_minter](record_uuid, data)
