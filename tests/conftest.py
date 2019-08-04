@@ -2,14 +2,11 @@
 """Defines fixtures available to all tests."""
 import os
 import shutil
-import subprocess
 import sys
 
-import pip
 import pytest
 from flask import Flask
 from flask.testing import FlaskClient
-from invenio_base.signals import app_loaded
 from invenio_db import InvenioDB
 from invenio_db import db as _db
 from invenio_jsonschemas import InvenioJSONSchemas
@@ -27,13 +24,9 @@ class JsonClient(FlaskClient):
         return super().open(*args, **kwargs)
 
 
-def install(package):
-    assert subprocess.call([sys.executable, "-m", "pip", "install", '-e', package]) == 0
-
-
 @pytest.fixture()
 def base_app():
-    """Flask application fixture."""
+    """Flask applicat-ion fixture."""
     instance_path = os.path.join(sys.prefix, 'var', 'test-instance')
 
     # empty the instance path
@@ -70,9 +63,6 @@ def app(base_app):
     # base_app.register_blueprint(blueprint)
 
     base_app._internal_jsonschemas = InvenioJSONSchemas(base_app)
-
-    # install sample application to the testing virtualenv
-    install(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'sample'))
     Records(base_app)
 
     with base_app.app_context():

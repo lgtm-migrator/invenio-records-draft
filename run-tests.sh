@@ -24,6 +24,8 @@
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
 # disabling isort as 4.3.21 behaves differently on local host and on travis
+
+pip install -e sample
 # isort -rc -c -df . && \
 check-manifest --ignore ".travis-*" && \
 python setup.py test
