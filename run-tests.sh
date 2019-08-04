@@ -23,6 +23,7 @@
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
-isort -rc -c -df . && \
+# disabling isort as 4.3.21 behaves differently on local host and on travis
+# isort -rc -c -df . && \
 check-manifest --ignore ".travis-*" && \
 python setup.py test
