@@ -128,7 +128,7 @@ class InvenioRecordsDraft(object):
 @app_loaded.connect
 def register_schemas_and_mappings(sender, app=None, **kwargs):
     with app.app_context():
-        for config in app.config['INVENIO_RECORD_DRAFT_SCHEMAS']:
+        for config in app.config.get('INVENIO_RECORD_DRAFT_SCHEMAS', []):
             config = current_drafts.preprocess_config(config)
 
             draft_schema = config['draft_schema']
@@ -145,7 +145,7 @@ def register_schemas_and_mappings(sender, app=None, **kwargs):
                                                 draft_schema)
 
         mapping_prefix = app.config.get('SEARCH_INDEX_PREFIX', None)
-        for config in app.config['INVENIO_RECORD_DRAFT_SCHEMAS']:
+        for config in app.config.get('INVENIO_RECORD_DRAFT_SCHEMAS', []):
             config = current_drafts.preprocess_config(config)
 
             published_index = config['published_index']

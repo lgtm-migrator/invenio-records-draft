@@ -195,6 +195,55 @@ Use `required=always` for properties that are required even in draft, `required=
 Validators (validate=[xxx]) will be removed when validating draft records.
 To enforce them for draft records wrap them with `draft_allowed`.
 
+Endpoints, loaders and serializers
+-----------------------------------
+
+For common cases, use `draft_enabled_endpoint` that sets all the required endpoint properties
+including marshmallow-assisted validation. See the sources of this function if you need small
+modifications. If you want to have more control on the created endpoints, you can set up
+your own endpoints as usual, look at the following sections.
+
+.. code:: python
+
+    RECORDS_REST_ENDPOINTS =
+        draft_enabled_endpoint(
+            url_prefix='records',
+            record_marshmallow=RecordSchemaV1,
+            metadata_marshmallow=MetadataSchemaV1,
+            search_index='records',
+        )
+
+
+The `configure_draft_endpoint` takes all the options that can be passed to
+`RECORDS_REST_ENDPOINTS`. If an option is prefixed with `draft_`, it will
+be used only on the draft record endpoint. If it is prefixed with `published_`,
+it will be used only on published record endpoint. Unprefixed keys
+will be used for both endpoints.
+
+The initial permissions are allow_all for drafts, allow_all for read on published,
+allow_none for modifications on published. There are two ways to modify these:
+
+
+ * Use high-level options. `read-permission-factory` handles read operation
+   (but not list that is always allow_all), `modify_permission_factory`
+   handles create/update/delete
+
+
+.. code:: python
+
+    RECORDS_REST_ENDPOINTS =
+        draft_enabled_endpoint(
+            # ... other options
+            draft_read_permission_factory=check_elasticsearch,
+            draft_modify_permission_factory=<something>,
+            published_read_permission_factory=check_elasticsearch
+        )
+
+
+Alternatively:
+
+ * Use normal `_imp` options to set up permissions, but prefix them with 'draft_' or 'published_'
+
 Loaders
 ------------------
 

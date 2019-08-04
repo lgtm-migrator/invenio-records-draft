@@ -17,6 +17,8 @@ from invenio_records_rest.schemas.fields import (
 )
 from marshmallow import fields, missing, validate
 
+from invenio_records_draft.marshmallow import DraftEnabledSchema
+
 
 class PersonIdsSchemaV1(StrictKeysMixin):
     """Ids schema."""
@@ -35,7 +37,7 @@ class ContributorSchemaV1(StrictKeysMixin):
     email = fields.Email()
 
 
-class MetadataSchemaV1(StrictKeysMixin):
+class MetadataSchemaV1(DraftEnabledSchema, StrictKeysMixin):
     """Schema for the record metadata."""
 
     id = PersistentIdentifier()
@@ -45,7 +47,7 @@ class MetadataSchemaV1(StrictKeysMixin):
     contributors = Nested(ContributorSchemaV1, many=True, required=True)
 
 
-class RecordSchemaV1(StrictKeysMixin):
+class RecordSchemaV1(DraftEnabledSchema, StrictKeysMixin):
     """Record schema."""
 
     metadata = fields.Nested(MetadataSchemaV1)
