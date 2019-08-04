@@ -9,7 +9,7 @@ readme = open('README.rst').read()
 INVENIO_VERSION = "3.1.1"
 
 install_requires = [
-    'invenio[base,metadata,elasticsearch6]~={version}'.format(version=INVENIO_VERSION),
+    'invenio[base,metadata,elasticsearch6,sqlite,postgresql]~={version}'.format(version=INVENIO_VERSION),
     'wrapt>=1.11.2'
 ]
 
@@ -34,12 +34,6 @@ tests_require = [
 
 extras_require = {
     'tests': tests_require,
-    'postgresql': [
-        'invenio[postgresql]~={version}'.format(version=INVENIO_VERSION),
-    ],
-    'sqlite': [
-        'invenio[sqlite]~={version}'.format(version=INVENIO_VERSION),
-    ]
 }
 
 setup_requires = [
