@@ -34,19 +34,20 @@ def test_endpoint_config(app):
         url_prefix='records',
         record_marshmallow=RecordSchemaV1,
         metadata_marshmallow=MetadataSchemaV1,
-        search_index='records')) == \
+        search_index='records',
+        draft_pid_type='drecid')) == \
            {
                'draft_records': {
                    'create_permission_factory_imp': '<function allow_all>',
                    'default_endpoint_prefix': True,
                    'delete_permission_factory_imp': '<function allow_all>',
-                   'item_route': 'drafts/records/<pid(draft_recid,'
+                   'item_route': 'drafts/records/<pid(drecid,'
                                  'record_class="invenio_records.api:Record"):pid_value>',
                    'list_permission_factory_imp': '<function allow_all>',
                    'list_route': 'drafts/records/',
-                   'pid_type': 'draft_recid',
-                   'pid_fetcher': 'recid',
-                   'pid_minter': 'recid',
+                   'pid_type': 'drecid',
+                   'pid_fetcher': 'drecid',
+                   'pid_minter': 'drecid',
                    'read_permission_factory_imp': '<function allow_all>',
                    'record_class': "<class 'invenio_records.api.Record'>",
                    'record_loaders': {
@@ -93,8 +94,8 @@ def test_endpoint_config(app):
            }
 
 
-def test_production_endpoint_list(app, db, schemas, mappings, prepare_es,
-                                  client, published_records_url, test_users):
+def test_production_endpoint(app, db, schemas, mappings, prepare_es,
+                             client, published_records_url, test_users):
     resp = client.get(published_records_url)
     assert resp.status_code == 200
     assert (app.config['SERVER_NAME'] + published_records_url) in header_links(resp)['self']
@@ -149,3 +150,14 @@ def test_draft_endpoint_list(app, db, schemas, mappings, prepare_es,
     assert len(resp.json['hits']['hits']) == 1
     first_hit = resp.json['hits']['hits'][0]
     assert first_hit['links']['self'] == f'http://{server_name}{draft_records_url}1'
+
+
+def test_draft_endpoint_create(app, db, schemas, mappings, prepare_es,
+                               client, draft_records_url):
+    resp = client.post(
+        draft_records_url,
+        json={
+            '$schema': current_jsonschemas.path_to_url('draft/records/record-v1.0.0.json')
+        })
+    print(resp.data)
+    assert resp.status_code == 201

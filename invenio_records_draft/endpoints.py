@@ -1,4 +1,9 @@
-from flask import url_for
+from flask import url_for, current_app
+from invenio_base.signals import app_loaded, app_created
+from invenio_db import db
+from invenio_pidstore import current_pidstore
+from invenio_pidstore.fetchers import FetchedPID
+from invenio_pidstore.models import PersistentIdentifier, PIDStatus
 from invenio_records import Record
 from invenio_records_rest.loaders import marshmallow_loader
 from invenio_records_rest.serializers import JSONSerializer, record_responsify, search_responsify
@@ -12,6 +17,7 @@ def draft_enabled_endpoint(
         record_marshmallow=None,
         metadata_marshmallow=None,
         search_index='records',
+        draft_pid_type=None,
         **kwargs
 ):
     published_endpoint = f'published_{url_prefix}'
@@ -44,13 +50,15 @@ def draft_enabled_endpoint(
     check_and_set(published_kwargs, 'list_route',
                   lambda: f'/{url_prefix}/')
 
-    check_and_set(draft_kwargs, 'pid_type', lambda: 'draft_' + pid_type)
+    check_and_set(draft_kwargs, 'pid_type', lambda: draft_pid_type)
     check_and_set(published_kwargs, 'pid_type', lambda: pid_type)
 
-    check_and_set(draft_kwargs, 'pid_minter', lambda: pid_minter)
+    draft_pid_minter = make_draft_minter(draft_pid_type, pid_minter)
+    check_and_set(draft_kwargs, 'pid_minter', lambda: draft_pid_type)
     check_and_set(published_kwargs, 'pid_minter', lambda: pid_minter)
 
-    check_and_set(draft_kwargs, 'pid_fetcher', lambda: pid_fetcher)
+    draft_pid_fetcher = make_draft_fetcher(draft_pid_type, pid_fetcher)
+    check_and_set(draft_kwargs, 'pid_fetcher', lambda: draft_pid_type)
     check_and_set(published_kwargs, 'pid_fetcher', lambda: pid_fetcher)
 
     check_and_set(draft_kwargs, 'record_class', lambda: Record)
@@ -162,6 +170,13 @@ def draft_enabled_endpoint(
     set_loaders(draft_kwargs, DraftSchemaWrapper)
     set_loaders(published_kwargs, lambda x: x)
 
+    def register_minters_fetchers(sender, app):
+        with app.app_context():
+            current_pidstore.minters[draft_pid_type] = draft_pid_minter
+            current_pidstore.fetchers[draft_pid_type] = draft_pid_fetcher
+
+    app_loaded.connect(register_minters_fetchers, weak=False)
+
     return {
         published_endpoint: published_kwargs,
         draft_endpoint: draft_kwargs
@@ -186,3 +201,42 @@ def make_links_factory(endpoint_name):
         return links
 
     return default_links_factory
+
+
+def make_draft_minter(draft_pid_type, original_minter):
+    def draft_minter(record_uuid, data):
+        with db.session.begin_nested():
+            pid = PersistentIdentifier.query.filter_by(pid_type=original_minter,
+                                                       object_type='rec', object_uuid=record_uuid).one_or_none()
+            if pid:
+                current_status = pid.status
+            else:
+                # create a new pid but set its status to NEW - it will not appear in GETs
+                pid = current_pidstore.minters[original_minter](record_uuid, data)
+                current_status = pid.status
+                pid.status = PIDStatus.NEW
+                db.session.add(pid)
+
+            draft_pid = PersistentIdentifier.create(
+                draft_pid_type,
+                pid.pid_value,
+                pid_provider=None,
+                object_type=pid.object_type,
+                object_uuid=pid.object_uuid,
+                status=current_status,
+            )
+        return draft_pid
+
+    return draft_minter
+
+
+def make_draft_fetcher(draft_pid_type, original_fetcher):
+    def draft_fetcher(record_uuid, data):
+        fetched_pid = current_pidstore.fetchers[original_fetcher](record_uuid, data)
+        return FetchedPID(
+            provider=fetched_pid.provider,
+            pid_type=draft_pid_type,
+            pid_value=fetched_pid.pid_value,
+        )
+
+    return draft_fetcher

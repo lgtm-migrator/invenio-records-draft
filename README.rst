@@ -37,7 +37,7 @@ are published. The following should hold:
     4. "Draft" records live at a different endpoint than published ones. The recommended URL
        is `/api/records` for the published records and `/api/draft-records` for drafts
 
-    5. Draft and published records share the same `recid`.
+    5. Draft and published records share the same value of pid but have two different pid types
 
     6. Published records can not be directly created/updated/patched. Draft records can be
        created/updated/patched.
@@ -195,6 +195,14 @@ Use `required=always` for properties that are required even in draft, `required=
 Validators (validate=[xxx]) will be removed when validating draft records.
 To enforce them for draft records wrap them with `draft_allowed`.
 
+Persistent identifiers
+----------------------
+
+This library supposes that draft and published records have the same value of their
+persistent identifier and different `pid_type`s. This way the library is able to distinguish
+them apart and at the same time keep link between them. If you create your own minters & loaders
+for draft records, you have to honour this.
+
 Endpoints, loaders and serializers
 -----------------------------------
 
@@ -211,6 +219,7 @@ your own endpoints as usual, look at the following sections.
             record_marshmallow=RecordSchemaV1,
             metadata_marshmallow=MetadataSchemaV1,
             search_index='records',
+            draft_pid_type='drecid'
         )
 
 

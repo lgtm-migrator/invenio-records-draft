@@ -45,6 +45,7 @@ class MetadataSchemaV1(DraftEnabledSchema, StrictKeysMixin):
     keywords = fields.List(SanitizedUnicode(), many=True)
     publication_date = DateString()
     contributors = Nested(ContributorSchemaV1, many=True, required=True)
+    schema = SanitizedUnicode(required=True, attribute='$schema', load_from='$schema', dump_to='$schema')
 
 
 class RecordSchemaV1(DraftEnabledSchema, StrictKeysMixin):

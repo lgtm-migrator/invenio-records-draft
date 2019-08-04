@@ -11,6 +11,7 @@ from flask.testing import FlaskClient
 from flask_login import LoginManager, login_user
 from flask_principal import Principal
 from invenio_accounts.models import User, Role
+from invenio_base.signals import app_loaded
 from invenio_db import InvenioDB
 from invenio_db import db as _db
 from invenio_indexer import InvenioIndexer
@@ -108,6 +109,8 @@ def app(base_app):
         login_user(user)
         set_identity(user)
         return response
+
+    app_loaded.send(None, app=base_app)
 
     with base_app.app_context():
         yield base_app

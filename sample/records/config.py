@@ -28,6 +28,7 @@ RECORDS_REST_ENDPOINTS = draft_enabled_endpoint(
     record_marshmallow=RecordSchemaV1,
     metadata_marshmallow=MetadataSchemaV1,
     search_index='records-record-v1.0.0',
+    draft_pid_type='drecid'
 )
 
 """REST API for my-site."""
