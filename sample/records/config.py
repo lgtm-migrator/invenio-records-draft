@@ -19,6 +19,7 @@ def _(x):
     """Identity function for string extraction."""
     return x
 
+
 RECORDS_REST_ENDPOINTS = {
     'recid': dict(
         pid_type='recid',
@@ -72,7 +73,6 @@ PIDSTORE_RECID_FIELD = 'id'
 RECORDS_ENDPOINTS_ENABLED = True
 """Enable/disable automatic endpoint registration."""
 
-
 RECORDS_REST_FACETS = dict(
     records=dict(
         aggs=dict(
@@ -86,7 +86,6 @@ RECORDS_REST_FACETS = dict(
     )
 )
 """Introduce searching facets."""
-
 
 RECORDS_REST_SORT_OPTIONS = dict(
     records=dict(
@@ -106,7 +105,6 @@ RECORDS_REST_SORT_OPTIONS = dict(
 )
 """Setup sorting options."""
 
-
 RECORDS_REST_DEFAULT_SORT = dict(
     records=dict(
         query='bestmatch',
@@ -116,8 +114,5 @@ RECORDS_REST_DEFAULT_SORT = dict(
 """Set default sorting options."""
 
 INVENIO_RECORD_DRAFT_SCHEMAS = [
-    {
-        'published_schema': 'records/record-v1.0.0.json',
-        'draft_schema': 'records/draft-record-v1.0.0.json'
-    }
+    'records/record-v1.0.0.json'
 ]

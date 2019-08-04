@@ -9,11 +9,13 @@ from flask import Flask
 from flask.testing import FlaskClient
 from invenio_db import InvenioDB
 from invenio_db import db as _db
+from invenio_indexer import InvenioIndexer
 from invenio_jsonschemas import InvenioJSONSchemas
+from invenio_search import InvenioSearch
 from sqlalchemy_utils import create_database, database_exists
 
-from invenio_records_draft.cli import make_schemas
-from invenio_records_draft.ext import InvenioRecordsDraft, register_schemas
+from invenio_records_draft.cli import make_mappings, make_schemas
+from invenio_records_draft.ext import InvenioRecordsDraft, register_schemas_and_mappings
 from sample.records import Records
 
 
@@ -47,11 +49,14 @@ def base_app():
         SERVER_NAME='localhost',
         SECURITY_PASSWORD_SALT='TEST_SECURITY_PASSWORD_SALT',
         SECRET_KEY='TEST_SECRET_KEY',
-        INVENIO_INSTANCE_PATH=instance_path
+        INVENIO_INSTANCE_PATH=instance_path,
+        SEARCH_INDEX_PREFIX='test-'
     )
     app.test_client_class = JsonClient
 
     InvenioDB(app_)
+    InvenioIndexer(app_)
+    InvenioSearch(app_)
 
     return app_
 
@@ -100,4 +105,15 @@ def schemas(app):
 
     # trigger registration of new schemas, normally performed
     # via app_loaded signal that is not emitted in tests
-    register_schemas(app, app=app)
+    register_schemas_and_mappings(app, app=app)
+
+
+@pytest.fixture
+def mappings(app, schemas):
+    runner = app.test_cli_runner()
+    result = runner.invoke(make_mappings)
+    assert result.exit_code == 0
+
+    # trigger registration of new schemas, normally performed
+    # via app_loaded signal that is not emitted in tests
+    register_schemas_and_mappings(app, app=app)
