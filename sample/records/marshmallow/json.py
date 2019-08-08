@@ -20,23 +20,6 @@ from marshmallow import fields, missing, validate
 from invenio_records_draft.marshmallow import DraftEnabledSchema
 
 
-class PersonIdsSchemaV1(StrictKeysMixin):
-    """Ids schema."""
-
-    source = SanitizedUnicode()
-    value = SanitizedUnicode()
-
-
-class ContributorSchemaV1(StrictKeysMixin):
-    """Contributor schema."""
-
-    ids = fields.Nested(PersonIdsSchemaV1, many=True)
-    name = SanitizedUnicode(required=True)
-    role = SanitizedUnicode()
-    affiliations = fields.List(SanitizedUnicode())
-    email = fields.Email()
-
-
 class MetadataSchemaV1(DraftEnabledSchema, StrictKeysMixin):
     """Schema for the record metadata."""
 
@@ -44,8 +27,8 @@ class MetadataSchemaV1(DraftEnabledSchema, StrictKeysMixin):
     title = SanitizedUnicode(required=True, validate=validate.Length(min=3))
     keywords = fields.List(SanitizedUnicode(), many=True)
     publication_date = DateString()
-    contributors = Nested(ContributorSchemaV1, many=True, required=True)
-    schema = SanitizedUnicode(required=True, attribute='$schema', load_from='$schema', dump_to='$schema')
+    schema = SanitizedUnicode(required=True, attribute='$schema',
+                              load_from='$schema', dump_to='$schema')
 
 
 class RecordSchemaV1(DraftEnabledSchema, StrictKeysMixin):

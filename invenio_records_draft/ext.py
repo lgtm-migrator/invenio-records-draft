@@ -8,7 +8,9 @@ from invenio_jsonschemas import current_jsonschemas
 from invenio_search import current_search
 from invenio_search.utils import schema_to_index
 
-from invenio_records_draft.proxies import current_drafts
+from .endpoints import _registrar
+from .proxies import current_drafts
+from .views import blueprint
 
 
 class InvenioRecordsDraftState(object):
@@ -114,6 +116,7 @@ class InvenioRecordsDraft(object):
     def init_app(self, app, db=None):
         self.init_config(app)
         app.extensions['invenio-records-draft'] = InvenioRecordsDraftState(app)
+        _registrar.add_to_blueprint(blueprint)
 
     # noinspection PyMethodMayBeStatic
     def init_config(self, app):

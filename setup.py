@@ -9,7 +9,8 @@ readme = open('README.rst').read()
 INVENIO_VERSION = "3.1.1"
 
 install_requires = [
-    'invenio[base,metadata,elasticsearch6,sqlite,postgresql]~={version}'.format(version=INVENIO_VERSION),
+    'invenio[base,metadata,elasticsearch6,sqlite,postgresql]' +
+    '~={version}'.format(version=INVENIO_VERSION),
     'wrapt>=1.11.2'
 ]
 
@@ -60,10 +61,13 @@ setup(
             'draft = invenio_records_draft.cli:draft',
         ],
         'invenio_base.api_apps': [
-            'draft = invenio_records_draft.ext:InvenioRecordsDraft',
+            'invenio_records_draft = invenio_records_draft.ext:InvenioRecordsDraft',
         ],
         'invenio_base.apps': [
-            'draft = invenio_records_draft.ext:InvenioRecordsDraft',
+            'invenio_records_draft = invenio_records_draft.ext:InvenioRecordsDraft',
+        ],
+        'invenio_base.api_blueprints': [
+            'invenio_records_draft = invenio_records_draft.views:blueprint',
         ],
     },
     include_package_data=True,

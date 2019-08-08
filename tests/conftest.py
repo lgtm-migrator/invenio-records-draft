@@ -3,6 +3,7 @@
 import os
 import shutil
 import sys
+import uuid
 from collections import namedtuple
 
 import pytest
@@ -15,9 +16,12 @@ from invenio_base.signals import app_loaded
 from invenio_db import InvenioDB
 from invenio_db import db as _db
 from invenio_indexer import InvenioIndexer
-from invenio_jsonschemas import InvenioJSONSchemas
+from invenio_indexer.api import RecordIndexer
+from invenio_jsonschemas import InvenioJSONSchemas, current_jsonschemas
 from invenio_pidstore import InvenioPIDStore
-from invenio_records import InvenioRecords
+from invenio_pidstore.minters import recid_minter
+from invenio_pidstore.models import PersistentIdentifier, PIDStatus
+from invenio_records import InvenioRecords, Record
 from invenio_records_rest import InvenioRecordsREST
 from invenio_records_rest.utils import PIDConverter
 from invenio_records_rest.views import create_blueprint_from_app
@@ -28,6 +32,7 @@ from sqlalchemy_utils import create_database, database_exists
 
 from invenio_records_draft.cli import make_mappings, make_schemas
 from invenio_records_draft.ext import InvenioRecordsDraft, register_schemas_and_mappings
+from invenio_records_draft.views import blueprint as record_drafts_blueprint
 from sample.records import Records
 from tests.helpers import set_identity
 
@@ -63,7 +68,8 @@ def base_app():
         SECURITY_PASSWORD_SALT='TEST_SECURITY_PASSWORD_SALT',
         SECRET_KEY='TEST_SECRET_KEY',
         INVENIO_INSTANCE_PATH=instance_path,
-        SEARCH_INDEX_PREFIX='test-'
+        SEARCH_INDEX_PREFIX='test-',
+        JSONSCHEMAS_HOST='localhost:5000'
     )
     app.test_client_class = JsonClient
 
@@ -78,7 +84,6 @@ def base_app():
 def app(base_app):
     """Flask application fixture."""
     InvenioRecordsDraft(base_app)
-    # base_app.register_blueprint(blueprint)
 
     base_app._internal_jsonschemas = InvenioJSONSchemas(base_app)
     Records(base_app)
@@ -89,6 +94,7 @@ def app(base_app):
     base_app.url_map.converters['pid'] = PIDConverter
 
     base_app.register_blueprint(create_blueprint_from_app(base_app))
+    base_app.register_blueprint(record_drafts_blueprint)
 
     principal = Principal(base_app)
 
@@ -148,6 +154,11 @@ def schemas(app):
     # trigger registration of new schemas, normally performed
     # via app_loaded signal that is not emitted in tests
     register_schemas_and_mappings(app, app=app)
+
+    return {
+        'published': 'https://localhost:5000/schemas/records/record-v1.0.0.json',
+        'draft': 'https://localhost:5000/schemas/draft/records/record-v1.0.0.json',
+    }
 
 
 @pytest.fixture
@@ -210,3 +221,40 @@ def prepare_es(app, db):
 
     assert 'test-records-record-v1.0.0' in aliases
     assert 'test-draft-records-record-v1.0.0' in aliases
+
+
+@pytest.fixture()
+def published_record(app, db, schemas, mappings, prepare_es):
+    # let's create a record
+    record_uuid = uuid.uuid4()
+    data = {
+        'title': 'blah',
+        '$schema': schemas['published']
+    }
+    recid_minter(record_uuid, data)
+    rec = Record.create(data, id_=record_uuid)
+    RecordIndexer().index(rec)
+    current_search_client.indices.flush()
+
+    return rec
+
+
+@pytest.fixture()
+def draft_record(app, db, schemas, mappings, prepare_es):
+    # let's create a record
+    draft_uuid = uuid.uuid4()
+    data = {
+        'title': 'blah',
+        '$schema': schemas['draft'],
+        'id': '1'
+    }
+    PersistentIdentifier.create(
+        pid_type='drecid', pid_value='1', status=PIDStatus.REGISTERED,
+        object_type='rec', object_uuid=draft_uuid
+    )
+    rec = Record.create(data, id_=draft_uuid)
+
+    RecordIndexer().index(rec)
+    current_search_client.indices.flush()
+
+    return rec

@@ -32,4 +32,5 @@ class Records(object):
                         app.config[n].update(getattr(config, k))
 
         # set the draft schemas
-        app.config.setdefault('INVENIO_RECORD_DRAFT_SCHEMAS', []).extend(config.INVENIO_RECORD_DRAFT_SCHEMAS)
+        app.config.setdefault('INVENIO_RECORD_DRAFT_SCHEMAS', []).extend(
+            config.INVENIO_RECORD_DRAFT_SCHEMAS)

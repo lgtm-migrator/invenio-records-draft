@@ -9,10 +9,10 @@
 
 from __future__ import absolute_import, print_function
 
-from invenio_indexer.api import RecordIndexer
+from flask_login import current_user
+from invenio_jsonschemas import current_jsonschemas
+from invenio_records import Record
 from invenio_records_rest.facets import terms_filter
-from invenio_records_rest.utils import allow_all, check_elasticsearch
-from invenio_search import RecordsSearch
 
 from invenio_records_draft.endpoints import draft_enabled_endpoint
 from sample.records.marshmallow import MetadataSchemaV1, RecordSchemaV1
@@ -23,12 +23,38 @@ def _(x):
     return x
 
 
+def allow_authenticated(*args, **kwargs):
+    """Return permission that always allow an access.
+
+    :returns: A object instance with a ``can()`` method.
+    """
+    return type('Allow', (), {'can': lambda self: current_user.is_authenticated})()
+
+
+class DraftRecord(Record):
+    def validate(self, **kwargs):
+        self['$schema'] = current_jsonschemas.path_to_url('draft/records/record-v1.0.0.json')
+        return super().validate(**kwargs)
+
+
+class PublishedRecord(Record):
+    def validate(self, **kwargs):
+        self['$schema'] = current_jsonschemas.path_to_url('records/record-v1.0.0.json')
+        return super().validate(**kwargs)
+
+
 RECORDS_REST_ENDPOINTS = draft_enabled_endpoint(
     url_prefix='records',
     record_marshmallow=RecordSchemaV1,
     metadata_marshmallow=MetadataSchemaV1,
     search_index='records-record-v1.0.0',
-    draft_pid_type='drecid'
+    draft_pid_type='drecid',
+    draft_allow_patch=True,
+    publish_permission_factory=allow_authenticated,
+    unpublish_permission_factory=allow_authenticated,
+    edit_permission_factory=allow_authenticated,
+    draft_record_class=DraftRecord,
+    published_record_class=PublishedRecord
 )
 
 """REST API for my-site."""
