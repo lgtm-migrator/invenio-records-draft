@@ -320,7 +320,7 @@ class DraftLinksFactory(LinksFactory):
         if record and self.publish_permission_factory(record=record).can():
             resp['publish'] = url_for(
                 'invenio_records_draft.publish_{0}'.format(self.endpoint_name),
-                pid_value=pid.pid_value
+                pid_value=pid.pid_value, _external=True
             )
         return resp
 
@@ -329,7 +329,7 @@ class PublishedLinksFactory(LinksFactory):
     def __call__(self, pid, record=None, **kwargs):
         resp = self.links_factory(pid, record=record, **kwargs)
         other_end = self.get_other_end_link(pid)
-        if other_end:
+        if other_end and self.edit_permission_factory(record=record).can():
             resp['draft'] = other_end
 
         if record and self.unpublish_permission_factory(record=record).can():
