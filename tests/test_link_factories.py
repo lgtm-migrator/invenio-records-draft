@@ -1,6 +1,6 @@
 from invenio_pidstore.models import PersistentIdentifier
 from invenio_records_rest.links import default_links_factory
-from invenio_records_rest.utils import deny_all, allow_all
+from invenio_records_rest.utils import allow_all, deny_all
 
 from invenio_records_draft.endpoints import DraftLinksFactory, PublishedLinksFactory
 
