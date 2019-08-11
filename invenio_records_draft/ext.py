@@ -1,28 +1,72 @@
+import copy
 import json
 import os
 import pkgutil
 
 from elasticsearch import VERSION as ES_VERSION
+from flask import Blueprint, url_for
 from invenio_base.signals import app_loaded
 from invenio_jsonschemas import current_jsonschemas
+from invenio_records_rest import current_records_rest
+from invenio_records_rest.utils import build_default_endpoint_prefixes
+from invenio_records_rest.views import create_url_rules
 from invenio_search import current_search
 from invenio_search.utils import schema_to_index
 
-from .endpoints import _registrar
-from .proxies import current_drafts
-from .views import blueprint
+from invenio_records_draft.endpoints import (
+    create_draft_endpoint,
+    create_published_endpoint,
+    pid_getter,
+)
+from invenio_records_draft.views import (
+    EditRecordAction,
+    PublishRecordAction,
+    UnpublishRecordAction,
+)
 
 
 class InvenioRecordsDraftState(object):
 
     def __init__(self, app):
         self.app = app
+        self.published_schemas = {}
+        self.draft_schemas = {}
+        self.draft_endpoints = {}
+        self.published_endpoints = {}
 
     def make_draft_schema(self, config):
         config = self.preprocess_config(config)
         schema_data = current_jsonschemas.get_schema(
             config['published_schema'], with_refs=False, resolved=True)
-        self.remove_required(schema_data)
+
+        removed_properties = config.get('removed_properties', {
+            'type': ['required'],
+            'string': ['minLength', 'maxLength', 'pattern', 'format'],
+            'integer': [
+                'multipleOf',
+                'minimum', 'exclusiveMinimum', 'maximum', 'exclusiveMaximum'
+            ],
+            'number': [
+                'multipleOf',
+                'minimum', 'exclusiveMinimum', 'maximum', 'exclusiveMaximum'
+            ],
+            'object': [
+                'required', 'minProperties', 'maxProperties', 'dependencies'
+            ],
+            'array': [
+                'minItems', 'maxItems', 'uniqueItems'
+            ]
+        })
+
+        self.remove_properties(schema_data, removed_properties)
+        schema_data['properties']['invenio_draft_validation'] = {
+            'type': 'object',
+            'additionalProperties': True,
+            'properties': {}
+        }
+
+        if 'draft_schema_transformer' in config:
+            schema_data = config['draft_schema_transformer'](schema_data)
         target_schema = config['draft_schema_file']
         target_dir = os.path.dirname(target_schema)
 
@@ -62,21 +106,27 @@ class InvenioRecordsDraftState(object):
 
         return target_mapping
 
-    def remove_required(self, el):
+    def remove_properties(self, el, props):
         if isinstance(el, list):
             for c in el:
-                self.remove_required(c)
-        elif isinstance(el, dict):
-            if 'required' in el:
-                del el['required']
-            for c in el.values():
-                self.remove_required(c)
+                self.remove_properties(c, props)
 
-    @staticmethod
-    def draft_schema(published_schema):
-        if not published_schema.startswith('/'):
-            published_schema = '/' + published_schema
-        return 'draft' + published_schema
+        if isinstance(el, dict):
+            _type = el.get('type', None)
+            removed_props = props.get(_type, [])
+            for k, c in list(el.items()):
+                if k in removed_props:
+                    del el[k]
+                else:
+                    self.remove_properties(c, props)
+
+    def get_draft_schema(self, published_schema):
+        if published_schema in self.published_schemas:
+            return self.published_schemas[published_schema]['draft_schema']
+        local_published_schema = current_jsonschemas.url_to_path(published_schema)
+        if local_published_schema in self.published_schemas:
+            return self.published_schemas[local_published_schema]['draft_schema']
+        raise ValueError('Schema %s not found' % published_schema)
 
     def preprocess_config(self, config):
         if isinstance(config, str):
@@ -87,7 +137,8 @@ class InvenioRecordsDraftState(object):
             config = {**config}
 
         if 'draft_schema' not in config:
-            config['draft_schema'] = self.draft_schema(config['published_schema'])
+            if not config['published_schema'].startswith('/'):
+                config['draft_schema'] = 'draft' + '/' + config['published_schema']
 
         config['draft_schema_file'] = os.path.join(
             self.app.config['INVENIO_RECORD_DRAFT_SCHEMAS_DIR'],
@@ -105,52 +156,15 @@ class InvenioRecordsDraftState(object):
 
         return config
 
+    def app_loaded(self, app):
+        with app.app_context():
+            self._register_draft_schemas(app)
+            self._register_draft_mappings(app)
+            self._register_blueprints(app)
 
-class InvenioRecordsDraft(object):
-
-    def __init__(self, app=None, db=None):
-        if app:
-            self.init_app(app, db)
-
-    # noinspection PyUnusedLocal
-    def init_app(self, app, db=None):
-        self.init_config(app)
-        app.extensions['invenio-records-draft'] = InvenioRecordsDraftState(app)
-        _registrar.add_to_blueprint(blueprint)
-
-    # noinspection PyMethodMayBeStatic
-    def init_config(self, app):
-        app.config['INVENIO_RECORD_DRAFT_SCHEMAS_DIR'] = os.path.join(
-            app.instance_path, 'draft_schemas')
-
-        app.config['INVENIO_RECORD_DRAFT_MAPPINGS_DIR'] = os.path.join(
-            app.instance_path, 'draft_mappings')
-
-
-# noinspection PyUnusedLocal
-@app_loaded.connect
-def register_schemas_and_mappings(sender, app=None, **kwargs):
-    with app.app_context():
-        for config in app.config.get('INVENIO_RECORD_DRAFT_SCHEMAS', []):
-            config = current_drafts.preprocess_config(config)
-
-            draft_schema = config['draft_schema']
-            if draft_schema in current_jsonschemas.schemas:
-                continue  # pragma: no cover
-
-            full_path = os.path.join(app.config['INVENIO_RECORD_DRAFT_SCHEMAS_DIR'], draft_schema)
-            if not os.path.exists(full_path):  # pragma: no cover
-                print('Draft schema %s not found. '
-                      'Please call invenio draft make-schemas' % draft_schema)
-                continue
-
-            current_jsonschemas.register_schema(app.config['INVENIO_RECORD_DRAFT_SCHEMAS_DIR'],
-                                                draft_schema)
-
+    def _register_draft_mappings(self, app):
         mapping_prefix = app.config.get('SEARCH_INDEX_PREFIX', None)
-        for config in app.config.get('INVENIO_RECORD_DRAFT_SCHEMAS', []):
-            config = current_drafts.preprocess_config(config)
-
+        for config in self.published_schemas.values():
             published_index = config['published_index']
             draft_schema = config['draft_schema']
             draft_index = config['draft_index']
@@ -173,3 +187,225 @@ def register_schemas_and_mappings(sender, app=None, **kwargs):
                         current_search.aliases[draft_alias_name] = {}
                     current_search.aliases[draft_alias_name][draft_index] = \
                         draft_mapping_file
+
+    def _register_draft_schemas(self, app):
+        for config in app.config.get('INVENIO_RECORD_DRAFT_SCHEMAS', []):
+            config = self.preprocess_config(config)
+
+            published_schema = config['published_schema']
+            draft_schema = config['draft_schema']
+
+            if draft_schema in current_jsonschemas.list_schemas():
+                continue
+
+            self.published_schemas[published_schema] = config
+            self.draft_schemas[draft_schema] = config
+
+            full_path = os.path.join(
+                app.config['INVENIO_RECORD_DRAFT_SCHEMAS_DIR'], draft_schema)
+
+            if not os.path.exists(full_path):  # pragma: no cover
+                print('Draft schema %s not found. '
+                      'Please call invenio draft make-schemas' % draft_schema)
+                continue
+
+            current_jsonschemas.register_schema(
+                app.config['INVENIO_RECORD_DRAFT_SCHEMAS_DIR'], draft_schema)
+
+    def _register_blueprints(self, app):
+        rest_blueprint = app.blueprints['invenio_records_rest']
+        mapping_prefix = app.config.get('SEARCH_INDEX_PREFIX', None)
+
+        endpoint_configs = app.config.get('DRAFT_ENABLED_RECORDS_REST_ENDPOINTS', {})
+        last_deferred_function_index = len(rest_blueprint.deferred_functions)
+
+        permission_factories = {}
+
+        for url_prefix, config in endpoint_configs.items():
+            config = copy.copy(config)
+
+            if 'draft_pid_type' not in config:
+                raise Exception('Add "draft_pid_type" to '
+                                'DRAFT_ENABLED_RECORDS_REST_ENDPOINTS[%s]' % url_prefix)
+
+            json_schemas = config.pop('json_schemas', [])
+            if not isinstance(json_schemas, (list, tuple)):
+                json_schemas = [json_schemas]
+
+            published_index = (
+                    config.pop('published_search_index', None) or
+                    config.pop('search_index', None)
+            )
+
+            if not published_index:
+                published_index = get_search_index(json_schemas, url_prefix)
+                if mapping_prefix and published_index.startswith(mapping_prefix):
+                    published_index = published_index[len(mapping_prefix):]
+
+            published_endpoint = f'published_{url_prefix}'
+            draft_endpoint = f'draft_{url_prefix}'
+
+            record_marshmallow = config.pop('record_marshmallow')
+            metadata_marshmallow = config.pop('metadata_marshmallow')
+
+            publish_permission_factory = config.pop('publish_permission_factory')
+            unpublish_permission_factory = config.pop('unpublish_permission_factory')
+            edit_permission_factory = config.pop('edit_permission_factory')
+
+            permission_factories[url_prefix] = {
+                'publish_permission_factory': publish_permission_factory,
+                'unpublish_permission_factory': unpublish_permission_factory,
+                'edit_permission_factory': edit_permission_factory
+            }
+
+            published_endpoint_config = create_published_endpoint(
+                url_prefix=url_prefix,
+                published_endpoint=published_endpoint,
+                draft_endpoint=draft_endpoint,
+                record_marshmallow=record_marshmallow,
+                search_index=published_index,
+                publish_permission_factory=publish_permission_factory,
+                unpublish_permission_factory=unpublish_permission_factory,
+                edit_permission_factory=edit_permission_factory,
+                **config)
+
+            draft_index = (
+                    config.pop('draft_search_index', None) or
+                    config.pop('search_index', None)
+            )
+
+            if not draft_index:
+                draft_schemas = [self.get_draft_schema(x) for x in json_schemas]
+                draft_index = get_search_index(draft_schemas, url_prefix)
+                if mapping_prefix and draft_index.startswith(mapping_prefix):
+                    draft_index = draft_index[len(mapping_prefix):]
+
+            draft_endpoint_config = create_draft_endpoint(
+                url_prefix=url_prefix,
+
+                published_endpoint=published_endpoint,
+                draft_endpoint=draft_endpoint,
+                record_marshmallow=record_marshmallow,
+                metadata_marshmallow=metadata_marshmallow,
+                search_index=draft_index,
+                publish_permission_factory=publish_permission_factory,
+                unpublish_permission_factory=unpublish_permission_factory,
+                edit_permission_factory=edit_permission_factory,
+                **config
+            )
+
+            for rule in create_url_rules(published_endpoint, **published_endpoint_config):
+                rest_blueprint.add_url_rule(**rule)
+
+            for rule in create_url_rules(draft_endpoint, **draft_endpoint_config):
+                rest_blueprint.add_url_rule(**rule)
+
+            default_prefixes = build_default_endpoint_prefixes({
+                published_endpoint: published_endpoint_config,
+                draft_endpoint: draft_endpoint_config
+            })
+
+            current_records_rest.default_endpoint_prefixes.update(default_prefixes)
+            draft_endpoint_config['endpoint'] = draft_endpoint
+            published_endpoint_config['endpoint'] = published_endpoint
+            self.draft_endpoints[url_prefix] = draft_endpoint_config
+            self.published_endpoints[url_prefix] = published_endpoint_config
+
+        state = rest_blueprint.make_setup_state(app, {}, False)
+        for deferred in rest_blueprint.deferred_functions[last_deferred_function_index:]:
+            deferred(state)
+
+        blueprint = Blueprint("invenio_records_draft", __name__, url_prefix="/")
+
+        for prefix in self.draft_endpoints.keys():
+            draft_config = self.draft_endpoints[prefix]
+            draft_endpoint_name = draft_config['endpoint']
+
+            published_config = self.published_endpoints[prefix]
+            published_endpoint_name = published_config['endpoint']
+
+            permissions = permission_factories[prefix]
+
+            draft_url = url_for(
+                'invenio_records_rest.{0}_list'.format(draft_endpoint_name),
+                _external=False)
+
+            published_url = url_for(
+                'invenio_records_rest.{0}_list'.format(published_endpoint_name),
+                _external=False)
+
+            published_record_validator = \
+                endpoint_configs[prefix].get('published_record_validator', None)
+
+            metadata_marshmallow = \
+                endpoint_configs[prefix].get('metadata_marshmallow', None)
+
+            blueprint.add_url_rule(
+                rule=f'{draft_url}{pid_getter(draft_config)}/publish',
+                view_func=PublishRecordAction.as_view(
+                    PublishRecordAction.view_name.format(draft_endpoint_name),
+                    publish_permission_factory=permissions['publish_permission_factory'],
+                    published_record_class=published_config['record_class'],
+                    published_pid_type=published_config['pid_type'],
+                    published_endpoint_name=published_endpoint_name
+                ))
+
+            blueprint.add_url_rule(
+                rule=f'{published_url}{pid_getter(published_config)}/unpublish',
+                view_func=UnpublishRecordAction.as_view(
+                    UnpublishRecordAction.view_name.format(published_endpoint_name),
+                    unpublish_permission_factory=permissions['unpublish_permission_factory'],
+                    draft_pid_type=draft_config['pid_type'],
+                    draft_record_class=draft_config['record_class'],
+                    draft_endpoint_name=draft_endpoint_name
+                ))
+
+            blueprint.add_url_rule(
+                rule=f'{published_url}{pid_getter(published_config)}/edit',
+                view_func=EditRecordAction.as_view(
+                    EditRecordAction.view_name.format(published_endpoint_name),
+                    edit_permission_factory=permissions['edit_permission_factory'],
+                    draft_pid_type=draft_config['pid_type'],
+                    draft_record_class=draft_config['record_class'],
+                    draft_endpoint_name=draft_endpoint_name
+                ))
+
+        app.register_blueprint(blueprint)
+
+
+def get_search_index(json_schemas, url_prefix):
+    indices = [schema_to_index(x)[0] for x in json_schemas]
+    indices = [x for x in indices if x]
+    if len(indices) == 1:
+        return indices[0]
+    else:
+        raise Exception(
+            'Add "published_search_index" or "json_schemas" to '
+            'DRAFT_ENABLED_RECORDS_REST_ENDPOINTS["%s"]' % url_prefix)
+
+
+class InvenioRecordsDraft(object):
+
+    def __init__(self, app=None, db=None):
+        if app:
+            self.init_app(app, db)
+
+    # noinspection PyUnusedLocal
+    def init_app(self, _app, db=None):
+        self.init_config(_app)
+        _state = InvenioRecordsDraftState(_app)
+        _app.extensions['invenio-records-draft'] = _state
+
+        def app_loaded_callback(sender, app, **kwargs):
+            if _app == app:
+                _state.app_loaded(app)
+
+        app_loaded.connect(app_loaded_callback, weak=False)
+
+    # noinspection PyMethodMayBeStatic
+    def init_config(self, app):
+        app.config['INVENIO_RECORD_DRAFT_SCHEMAS_DIR'] = os.path.join(
+            app.instance_path, 'draft_schemas')
+
+        app.config['INVENIO_RECORD_DRAFT_MAPPINGS_DIR'] = os.path.join(
+            app.instance_path, 'draft_mappings')

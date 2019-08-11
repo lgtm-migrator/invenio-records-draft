@@ -24,13 +24,20 @@ class Records(object):
             elif k == 'PIDSTORE_RECID_FIELD':
                 app.config['PIDSTORE_RECID_FIELD'] = getattr(config, k)
             else:
-                for n in ['RECORDS_REST_ENDPOINTS', 'RECORDS_UI_ENDPOINTS',
-                          'RECORDS_REST_FACETS', 'RECORDS_REST_SORT_OPTIONS',
-                          'RECORDS_REST_DEFAULT_SORT']:
-                    if k == n and with_endpoints:
-                        app.config.setdefault(n, {})
-                        app.config[n].update(getattr(config, k))
+                pass
+                # for n in ['RECORDS_REST_ENDPOINTS', 'RECORDS_UI_ENDPOINTS',
+                #           'RECORDS_REST_FACETS', 'RECORDS_REST_SORT_OPTIONS',
+                #           'RECORDS_REST_DEFAULT_SORT']:
+                #     if k == n and with_endpoints:
+                #         app.config.setdefault(n, {})
+                #         app.config[n].update(getattr(config, k))
 
         # set the draft schemas
         app.config.setdefault('INVENIO_RECORD_DRAFT_SCHEMAS', []).extend(
             config.INVENIO_RECORD_DRAFT_SCHEMAS)
+
+        # set the draft endpoints
+        app.config.setdefault('DRAFT_ENABLED_RECORDS_REST_ENDPOINTS', {}).update(
+            config.DRAFT_ENABLED_RECORDS_REST_ENDPOINTS)
+
+        app.config['RECORDS_REST_ENDPOINTS'] = {}

@@ -17,14 +17,17 @@ from invenio_records_rest.schemas.fields import (
 )
 from marshmallow import fields, missing, validate
 
-from invenio_records_draft.marshmallow import DraftEnabledSchema
+from invenio_records_draft.marshmallow import (
+    DraftEnabledSchema,
+    DraftValidationSchemaV1Mixin,
+)
 
 
-class MetadataSchemaV1(DraftEnabledSchema, StrictKeysMixin):
+class MetadataSchemaV1(DraftValidationSchemaV1Mixin, DraftEnabledSchema, StrictKeysMixin):
     """Schema for the record metadata."""
 
     id = PersistentIdentifier()
-    title = SanitizedUnicode(required=True, validate=validate.Length(min=3))
+    title = SanitizedUnicode(required=True, validate=validate.Length(min=1, max=10))
     keywords = fields.List(SanitizedUnicode(), many=True)
     publication_date = DateString()
     schema = SanitizedUnicode(required=True, attribute='$schema',

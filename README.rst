@@ -19,7 +19,64 @@ Invenio Records Draft
 **Not yet even alpha, do not use !!!**
 
 This library helps to solve the situation where records in Invenio go through draft stage before they
-are published. The following should hold:
+are published.
+
+Example:
+
+.. code:: python
+
+    # marshmallow and schema: property 'title' is required
+
+    > draft_url = 'https://localhost:5000/api/drafts/records/'
+    > published_url = 'https://localhost:5000/api/records/'
+
+    > created_draft_url = post(draft_url,
+        json={
+            '$schema': current_jsonschemas.path_to_url('draft/records/record-v1.0.0.json')
+        })[...]
+
+    302, created_draft_url = 'https://localhost:5000/drafts/records/1'
+
+    > resp = get(created_draft_url)
+
+    > publish_link = resp.json['links']['publish']
+
+    > resp.json['metadata']
+
+    {
+        "$schema": "https://localhost:5000/schemas/draft/records/record-v1.0.0.json",
+        "id": "1",
+        'invenio_draft_validation': {
+            'errors': {
+                'marshmallow': [
+                    {'field': 'title',
+                     'message': 'Missing data for required field.'
+                     }
+                ]
+            },
+            'valid': False
+        }
+    }
+
+    > put(created_draft_url, json={
+        "$schema": "https://localhost:5000/schemas/draft/records/record-v1.0.0.json",
+        'title': 'def'})
+
+    {
+        "$schema": "https://localhost:5000/schemas/draft/records/record-v1.0.0.json",
+        "id": "1",
+        'invenio_draft_validation': {
+            'valid': True
+        }
+    }
+
+    > post(publish_link)
+
+    302, headers['Location'] == 'https://localhost:5000/records/1'
+
+
+Library principles:
+===================
 
 1. Draft records should follow the same json schema as published records with the exception
    that all/most properties are not required even though they are marked as such
@@ -208,28 +265,84 @@ persistent identifier and different ``pid_type``s. This way the library is able 
 them apart and at the same time keep link between them. If you create your own minters & loaders
 for draft records, you have to honour this.
 
-Endpoints, loaders and serializers
------------------------------------
+Record class
+------------
 
-For common cases, use ``draft_enabled_endpoint`` that sets all the required endpoint properties
-including marshmallow-assisted validation. See the sources of this function if you need small
-modifications. If you want to have more control on the created endpoints, you can set up
-your own endpoints as usual, look at the following sections.
+To allow for schema validation on draft endpoint, create your own record classes:
 
 .. code:: python
 
-    RECORDS_REST_ENDPOINTS =
-        draft_enabled_endpoint(
-            url_prefix='records',
-            record_marshmallow=RecordSchemaV1,
-            metadata_marshmallow=MetadataSchemaV1,
-            search_index='records',
-            draft_pid_type='drecid',
-            draft_allow_patch=True
+    class PublishedRecord(DraftEnabledRecordMixin, Record):
+        def validate(self, **kwargs):
+            self['$schema'] = current_jsonschemas.path_to_url('records/record-v1.0.0.json')
+            return super().validate(**kwargs)
+
+
+    class DraftRecord(DraftEnabledRecordMixin, Record):
+
+        draft_validator = MarshmallowValidator(
+            'sample.records.marshmallow:MetadataSchemaV1',  # marshmallow of the published version
+            'records/record-v1.0.0.json'                    # json schema of the published version
         )
 
+        def validate(self, **kwargs):
+            self['$schema'] = current_jsonschemas.path_to_url('draft/records/record-v1.0.0.json')
+            return super().validate(**kwargs)
 
-The ``configure_draft_endpoint`` takes all the options that can be passed to
+When a draft record is validated, the ``draft_validator`` gets called and fills in property
+``invenio_draft_validation`` that is stored both to invenio database and to elasticsearch:
+
+.. code:: javascript
+
+    {
+        'id': 1,
+        '$schema': '...',
+        // ... other properties
+        'invenio_draft_validation': {
+            'valid': false,
+            'errors': {
+                'marshmallow': [
+                    {
+                        'field': 'title',
+                        'message': 'Missing data for required field.'
+                    }
+                ]
+            }
+        }
+    }
+
+Endpoints, loaders and serializers
+-----------------------------------
+
+For common cases, use ``DRAFT_ENABLED_RECORDS_REST_ENDPOINTS`` that sets all the required
+endpoint properties including marshmallow-assisted validation. See the sources of ``ext.py``
+if you need small modifications. If you want to have more control on the created endpoints,
+you can set up your own endpoints as usual, look at the following sections.
+
+.. code:: python
+
+    DRAFT_ENABLED_RECORDS_REST_ENDPOINTS = {
+        'records': {
+            'json_schemas': [
+                'records/record-v1.0.0.json'
+            ],
+            'draft_pid_type': 'drecid',
+            'draft_allow_patch': True,
+
+            'record_marshmallow': RecordSchemaV1,
+            'metadata_marshmallow': MetadataSchemaV1,
+
+            'draft_record_class': DraftRecord,
+            'published_record_class': PublishedRecord,
+
+            'publish_permission_factory': allow_authenticated,
+            'unpublish_permission_factory': allow_authenticated,
+            'edit_permission_factory': allow_authenticated,
+        }
+    }
+
+
+This configuration takes all the options that can be passed to
 ``RECORDS_REST_ENDPOINTS``. If an option is prefixed with ``draft_``, it will
 be used only on the draft record endpoint. If it is prefixed with ``published_``,
 it will be used only on published record endpoint. Unprefixed keys
@@ -303,51 +416,58 @@ REST Endpoints
 .. code:: python
 
     RECORDS_REST_ENDPOINTS = {
-        'published': dict(
-            pid_type='recid',
-            pid_minter='recid',
-            pid_fetcher='recid',
-            default_endpoint_prefix=True,
-            search_index='records',
-            record_serializers={
-                'application/json': ('my_site.records.serializers'
-                                     ':json_v1_response'),
+        'published_records': {
+            'create_permission_factory_imp': '<function deny_all>',
+            'default_endpoint_prefix': True,
+            'delete_permission_factory_imp': '<function allow_all>',
+            'item_route': '/records/<pid(recid,'
+                          'record_class="sample.records.config:PublishedRecord"):pid_value>',
+            'list_permission_factory_imp': '<function allow_all>',
+            'list_route': '/records/',
+            'pid_type': 'recid',
+            'pid_fetcher': 'recid',
+            'pid_minter': 'recid',
+            'read_permission_factory_imp': '<function allow_all>',
+            'record_class': "<class 'sample.records.config.PublishedRecord'>",
+            'record_serializers': {
+                'application/json': '<function record_responsify.<locals>.view>'
             },
-            search_serializers={
-                'application/json': ('my_site.records.serializers'
-                                     ':json_v1_search'),
+            'search_index': 'records-record-v1.0.0',
+            'search_serializers': {
+                'application/json': '<function search_responsify.<locals>.view>'
             },
-            record_loaders={},
-            list_route='/records/',
-            item_route='/records/<pid(recid):pid_value>',
-            create_permission_factory_imp=deny_all,
-            update_permission_factory_imp=deny_all,
-            delete_permission_factory_imp=deny_all,
-        ),
-        'draft': dict(
-            pid_type='drecid'
-            pid_minter='drecid',
-            pid_fetcher='drecid',
-            default_endpoint_prefix=False,
-            search_index='draft-records',
-            record_serializers={
-                'application/json': ('my_site.records.serializers'
-                                     ':draft_json_v1_response'),
+            'default_media_type': 'application/json',
+            'links_factory_imp':
+                '<invenio_records_draft.endpoints.PublishedLinksFactory object>',
+            'update_permission_factory_imp': '<function deny_all>',
+        },
+        'draft_records': {
+            'create_permission_factory_imp': '<function allow_all>',
+            'default_endpoint_prefix': True,
+            'delete_permission_factory_imp': '<function allow_all>',
+            'item_route': 'drafts/records/<pid(drecid,'
+                          'record_class="sample.records.config:DraftRecord"):pid_value>',
+            'list_permission_factory_imp': '<function allow_all>',
+            'list_route': 'drafts/records/',
+            'pid_type': 'drecid',
+            'pid_fetcher': 'drecid',
+            'pid_minter': 'drecid',
+            'read_permission_factory_imp': '<function allow_all>',
+            'record_class': "<class 'sample.records.config.DraftRecord'>",
+            'record_loaders': {
+                'application/json': '<function marshmallow_loader.<locals>.json_loader>',
+                'application/json-patch+json': '<function json_patch_loader>'
             },
-            search_serializers={
-                'application/json': ('my_site.records.serializers'
-                                     ':draft_json_v1_search'),
+            'record_serializers': {
+                'application/json': '<function record_responsify.<locals>.view>'
             },
-            record_loaders={
-                'application/json': ('my_site.records.loaders'
-                                     ':draft_json_v1'),
+            'search_index': 'draft-records-record-v1.0.0',
+            'search_serializers': {
+                'application/json': '<function search_responsify.<locals>.view>'
             },
-            list_route='/draft/records/',
-            item_route='/draft/records/<pid(drecid):pid_value>',
-            create_permission_factory_imp=allow_all,
-            read_permission_factory_imp=check_elasticsearch,
-            update_permission_factory_imp=allow_all,
-            delete_permission_factory_imp=allow_all,
-            list_permission_factory_imp=allow_all
-        )
+            'default_media_type': 'application/json',
+            'update_permission_factory_imp': '<function allow_all>',
+            'links_factory_imp':
+                '<invenio_records_draft.endpoints.DraftLinksFactory object>',
+        }
     }

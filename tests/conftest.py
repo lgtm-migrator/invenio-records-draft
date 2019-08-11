@@ -31,8 +31,7 @@ from invenio_search.cli import destroy, init
 from sqlalchemy_utils import create_database, database_exists
 
 from invenio_records_draft.cli import make_mappings, make_schemas
-from invenio_records_draft.ext import InvenioRecordsDraft, register_schemas_and_mappings
-from invenio_records_draft.views import blueprint as record_drafts_blueprint
+from invenio_records_draft.ext import InvenioRecordsDraft
 from sample.records import Records
 from tests.helpers import set_identity
 
@@ -76,6 +75,8 @@ def base_app():
     InvenioDB(app_)
     InvenioIndexer(app_)
     InvenioSearch(app_)
+    print('records draft registered to app')
+    InvenioRecordsDraft(app_)
 
     return app_
 
@@ -83,7 +84,6 @@ def base_app():
 @pytest.yield_fixture()
 def app(base_app):
     """Flask application fixture."""
-    InvenioRecordsDraft(base_app)
 
     base_app._internal_jsonschemas = InvenioJSONSchemas(base_app)
     Records(base_app)
@@ -94,7 +94,6 @@ def app(base_app):
     base_app.url_map.converters['pid'] = PIDConverter
 
     base_app.register_blueprint(create_blueprint_from_app(base_app))
-    base_app.register_blueprint(record_drafts_blueprint)
 
     principal = Principal(base_app)
 
@@ -153,7 +152,9 @@ def schemas(app):
 
     # trigger registration of new schemas, normally performed
     # via app_loaded signal that is not emitted in tests
-    register_schemas_and_mappings(app, app=app)
+    with app.app_context():
+        app.extensions['invenio-records-draft']._register_draft_schemas(app)
+        app.extensions['invenio-records-draft']._register_draft_mappings(app)
 
     return {
         'published': 'https://localhost:5000/schemas/records/record-v1.0.0.json',
@@ -169,7 +170,9 @@ def mappings(app, schemas):
 
     # trigger registration of new schemas, normally performed
     # via app_loaded signal that is not emitted in tests
-    register_schemas_and_mappings(app, app=app)
+    with app.app_context():
+        app.extensions['invenio-records-draft']._register_draft_schemas(app)
+        app.extensions['invenio-records-draft']._register_draft_mappings(app)
 
 
 @pytest.fixture

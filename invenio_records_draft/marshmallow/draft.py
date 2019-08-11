@@ -2,7 +2,7 @@ import copy
 from functools import wraps
 
 import wrapt
-from marshmallow import Schema
+from marshmallow import Schema, fields
 
 
 class _Bool():
@@ -93,5 +93,15 @@ def draft_allowed(func):
     return wrapped
 
 
+class DraftValidationSchemaV1(Schema):
+    valid = fields.Boolean(required=True)
+    errors = fields.Field()
+
+
+class DraftValidationSchemaV1Mixin():
+    invenio_draft_validation = fields.Nested(DraftValidationSchemaV1, required=False)
+
+
 __all__ = ('DraftSchemaWrapper', 'DraftEnabledSchema', 'DraftField',
-           'draft_allowed', 'always', 'published_only')
+           'draft_allowed', 'always', 'published_only',
+           'DraftValidationSchemaV1', 'DraftValidationSchemaV1Mixin')

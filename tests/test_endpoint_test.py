@@ -1,9 +1,6 @@
-import json
 import re
 import uuid
 
-import pytest
-import requests
 from invenio_indexer.api import RecordIndexer
 from invenio_jsonschemas import current_jsonschemas
 from invenio_pidstore.minters import recid_minter
@@ -11,8 +8,7 @@ from invenio_pidstore.models import PersistentIdentifier, PIDStatus
 from invenio_records import Record
 from invenio_search import current_search_client
 
-from invenio_records_draft.endpoints import draft_enabled_endpoint
-from sample.records.marshmallow import MetadataSchemaV1, RecordSchemaV1
+from invenio_records_draft.proxies import current_drafts
 from tests.helpers import header_links, login
 
 
@@ -31,68 +27,67 @@ def stringify_functions(x):
     return x
 
 
-def test_endpoint_config(app):
-    assert stringify_functions(draft_enabled_endpoint(
-        url_prefix='records',
-        record_marshmallow=RecordSchemaV1,
-        metadata_marshmallow=MetadataSchemaV1,
-        search_index='records',
-        draft_pid_type='drecid')) == \
-           {
-               'draft_records': {
-                   'create_permission_factory_imp': '<function allow_all>',
-                   'default_endpoint_prefix': True,
-                   'delete_permission_factory_imp': '<function allow_all>',
-                   'item_route': 'drafts/records/<pid(drecid,'
-                                 'record_class="invenio_records.api:Record"):pid_value>',
-                   'list_permission_factory_imp': '<function allow_all>',
-                   'list_route': 'drafts/records/',
-                   'pid_type': 'drecid',
-                   'pid_fetcher': 'drecid',
-                   'pid_minter': 'drecid',
-                   'read_permission_factory_imp': '<function allow_all>',
-                   'record_class': "<class 'invenio_records.api.Record'>",
-                   'record_loaders': {
-                       'application/json': '<function marshmallow_loader.<locals>.json_loader>'
-                   },
-                   'record_serializers': {
-                       'application/json': '<function record_responsify.<locals>.view>'
-                   },
-                   'search_index': 'draft-records',
-                   'search_serializers': {
-                       'application/json': '<function search_responsify.<locals>.view>'
-                   },
-                   'default_media_type': 'application/json',
-                   'update_permission_factory_imp': '<function allow_all>',
-                   'links_factory_imp':
-                       '<invenio_records_draft.endpoints.DraftLinksFactory object>',
-               },
-               'published_records': {
-                   'create_permission_factory_imp': '<function deny_all>',
-                   'default_endpoint_prefix': True,
-                   'delete_permission_factory_imp': '<function allow_all>',
-                   'item_route': '/records/<pid(recid,'
-                                 'record_class="invenio_records.api:Record"):pid_value>',
-                   'list_permission_factory_imp': '<function allow_all>',
-                   'list_route': '/records/',
-                   'pid_type': 'recid',
-                   'pid_fetcher': 'recid',
-                   'pid_minter': 'recid',
-                   'read_permission_factory_imp': '<function allow_all>',
-                   'record_class': "<class 'invenio_records.api.Record'>",
-                   'record_serializers': {
-                       'application/json': '<function record_responsify.<locals>.view>'
-                   },
-                   'search_index': 'records',
-                   'search_serializers': {
-                       'application/json': '<function search_responsify.<locals>.view>'
-                   },
-                   'default_media_type': 'application/json',
-                   'links_factory_imp':
-                       '<invenio_records_draft.endpoints.PublishedLinksFactory object>',
-                   'update_permission_factory_imp': '<function deny_all>'
-               }
-           }
+def test_endpoint_config(app, schemas):
+    draft_endpoint = current_drafts.draft_endpoints['records']
+    published_endpoint = current_drafts.published_endpoints['records']
+
+    assert stringify_functions(draft_endpoint) == {
+        'create_permission_factory_imp': '<function allow_all>',
+        'default_endpoint_prefix': True,
+        'delete_permission_factory_imp': '<function allow_all>',
+        'item_route': 'drafts/records/<pid(drecid,'
+                      'record_class="sample.records.config:DraftRecord"):pid_value>',
+        'list_permission_factory_imp': '<function allow_all>',
+        'list_route': 'drafts/records/',
+        'pid_type': 'drecid',
+        'pid_fetcher': 'drecid',
+        'pid_minter': 'drecid',
+        'read_permission_factory_imp': '<function allow_all>',
+        'record_class': "<class 'sample.records.config.DraftRecord'>",
+        'record_loaders': {
+            'application/json': '<function marshmallow_loader.<locals>.json_loader>',
+            'application/json-patch+json': '<function json_patch_loader>'
+        },
+        'record_serializers': {
+            'application/json': '<function record_responsify.<locals>.view>'
+        },
+        'search_index': 'draft-records-record-v1.0.0',
+        'search_serializers': {
+            'application/json': '<function search_responsify.<locals>.view>'
+        },
+        'default_media_type': 'application/json',
+        'update_permission_factory_imp': '<function allow_all>',
+        'links_factory_imp':
+            '<invenio_records_draft.endpoints.DraftLinksFactory object>',
+        'endpoint': 'draft_records'
+    }
+
+    assert stringify_functions(published_endpoint) == {
+        'create_permission_factory_imp': '<function deny_all>',
+        'default_endpoint_prefix': True,
+        'delete_permission_factory_imp': '<function allow_all>',
+        'item_route': '/records/<pid(recid,'
+                      'record_class="sample.records.config:PublishedRecord"):pid_value>',
+        'list_permission_factory_imp': '<function allow_all>',
+        'list_route': '/records/',
+        'pid_type': 'recid',
+        'pid_fetcher': 'recid',
+        'pid_minter': 'recid',
+        'read_permission_factory_imp': '<function allow_all>',
+        'record_class': "<class 'sample.records.config.PublishedRecord'>",
+        'record_serializers': {
+            'application/json': '<function record_responsify.<locals>.view>'
+        },
+        'search_index': 'records-record-v1.0.0',
+        'search_serializers': {
+            'application/json': '<function search_responsify.<locals>.view>'
+        },
+        'default_media_type': 'application/json',
+        'links_factory_imp':
+            '<invenio_records_draft.endpoints.PublishedLinksFactory object>',
+        'update_permission_factory_imp': '<function deny_all>',
+        'endpoint': 'published_records'
+    }
 
 
 def test_production_endpoint(app, db, schemas, mappings, prepare_es,
@@ -204,7 +199,17 @@ def test_draft_endpoint_ops(app, db, schemas, mappings, prepare_es,
     assert resp.status_code == 200
     assert resp.json['metadata'] == {
         "$schema": "https://localhost:5000/schemas/draft/records/record-v1.0.0.json",
-        "id": "1"
+        "id": "1",
+        'invenio_draft_validation': {
+            'errors': {
+                'marshmallow': [
+                    {'field': 'title',
+                     'message': 'Missing data for required field.'
+                     }
+                ]
+            },
+            'valid': False
+        }
     }
 
     # try to update the record

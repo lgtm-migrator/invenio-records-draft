@@ -15,14 +15,12 @@ class PublishRecordAction(MethodView):
                  publish_permission_factory=None,
                  published_record_class=None,
                  published_pid_type=None,
-                 published_record_validator=lambda record: True,
                  published_endpoint_name=None,
                  **kwargs):
         super().__init__(**kwargs)
         self.publish_permission_factory = publish_permission_factory
         self.published_record_class = published_record_class
         self.published_pid_type = published_pid_type
-        self.published_record_validator = published_record_validator
         self.published_endpoint_name = published_endpoint_name
 
     @pass_record
@@ -34,7 +32,6 @@ class PublishRecordAction(MethodView):
                 draft_pid=pid,
                 published_record_class=self.published_record_class,
                 published_pid_type=self.published_pid_type,
-                published_record_validator=self.published_record_validator,
                 remove_draft=True)
 
         RecordIndexer().delete(draft_record, refresh=True)

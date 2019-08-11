@@ -14,7 +14,7 @@ from invenio_jsonschemas import current_jsonschemas
 from invenio_records import Record
 from invenio_records_rest.facets import terms_filter
 
-from invenio_records_draft.endpoints import draft_enabled_endpoint
+from invenio_records_draft.record import DraftEnabledRecordMixin, MarshmallowValidator
 from sample.records.marshmallow import MetadataSchemaV1, RecordSchemaV1
 
 
@@ -31,31 +31,43 @@ def allow_authenticated(*args, **kwargs):
     return type('Allow', (), {'can': lambda self: current_user.is_authenticated})()
 
 
-class DraftRecord(Record):
-    def validate(self, **kwargs):
-        self['$schema'] = current_jsonschemas.path_to_url('draft/records/record-v1.0.0.json')
-        return super().validate(**kwargs)
-
-
-class PublishedRecord(Record):
+class PublishedRecord(DraftEnabledRecordMixin, Record):
     def validate(self, **kwargs):
         self['$schema'] = current_jsonschemas.path_to_url('records/record-v1.0.0.json')
         return super().validate(**kwargs)
 
 
-RECORDS_REST_ENDPOINTS = draft_enabled_endpoint(
-    url_prefix='records',
-    record_marshmallow=RecordSchemaV1,
-    metadata_marshmallow=MetadataSchemaV1,
-    search_index='records-record-v1.0.0',
-    draft_pid_type='drecid',
-    draft_allow_patch=True,
-    publish_permission_factory=allow_authenticated,
-    unpublish_permission_factory=allow_authenticated,
-    edit_permission_factory=allow_authenticated,
-    draft_record_class=DraftRecord,
-    published_record_class=PublishedRecord
-)
+class DraftRecord(DraftEnabledRecordMixin, Record):
+
+    draft_validator = MarshmallowValidator(
+        'sample.records.marshmallow:MetadataSchemaV1',
+        'records/record-v1.0.0.json'
+    )
+
+    def validate(self, **kwargs):
+        self['$schema'] = current_jsonschemas.path_to_url('draft/records/record-v1.0.0.json')
+        return super().validate(**kwargs)
+
+
+DRAFT_ENABLED_RECORDS_REST_ENDPOINTS = {
+    'records': {
+        'json_schemas': [
+            'records/record-v1.0.0.json'
+        ],
+        'draft_pid_type': 'drecid',
+        'draft_allow_patch': True,
+
+        'record_marshmallow': RecordSchemaV1,
+        'metadata_marshmallow': MetadataSchemaV1,
+
+        'draft_record_class': DraftRecord,
+        'published_record_class': PublishedRecord,
+
+        'publish_permission_factory': allow_authenticated,
+        'unpublish_permission_factory': allow_authenticated,
+        'edit_permission_factory': allow_authenticated,
+    }
+}
 
 """REST API for my-site."""
 

@@ -66,9 +66,6 @@ setup(
         'invenio_base.apps': [
             'invenio_records_draft = invenio_records_draft.ext:InvenioRecordsDraft',
         ],
-        'invenio_base.api_blueprints': [
-            'invenio_records_draft = invenio_records_draft.views:blueprint',
-        ],
     },
     include_package_data=True,
     setup_requires=setup_requires,
