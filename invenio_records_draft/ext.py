@@ -134,7 +134,7 @@ class InvenioRecordsDraftState(object):
 
         if isinstance(el, dict):
             _type = el.get('type', None)
-            removed_props = props.get(_type, [])
+            removed_props = props.get(str(_type), [])
             for k, c in list(el.items()):
                 if k in removed_props:
                     del el[k]
