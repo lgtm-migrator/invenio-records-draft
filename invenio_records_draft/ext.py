@@ -2,9 +2,10 @@ import copy
 import json
 import os
 import pkgutil
+from urllib.parse import urlsplit, urlunparse
 
 from elasticsearch import VERSION as ES_VERSION
-from flask import Blueprint, url_for
+from flask import Blueprint, current_app, url_for
 from invenio_base.signals import app_loaded
 from invenio_jsonschemas import current_jsonschemas
 from invenio_records_rest import current_records_rest
@@ -12,6 +13,7 @@ from invenio_records_rest.utils import build_default_endpoint_prefixes
 from invenio_records_rest.views import create_url_rules
 from invenio_search import current_search
 from invenio_search.utils import schema_to_index
+from jsonref import JsonRef
 
 from invenio_records_draft.endpoints import (
     create_draft_endpoint,
@@ -25,6 +27,16 @@ from invenio_records_draft.views import (
 )
 
 
+def internal_invenio_loader(relative_schema, *args, **kwargs):
+    parts = urlsplit(relative_schema)
+    if not parts.netloc:
+        relative_schema = urlunparse((current_app.config['JSONSCHEMAS_URL_SCHEME'],
+                                      current_app.config['JSONSCHEMAS_HOST'],
+                                      relative_schema, None, None, None))
+    path = current_jsonschemas.url_to_path(relative_schema)
+    return current_jsonschemas.get_schema(path)
+
+
 class InvenioRecordsDraftState(object):
 
     def __init__(self, app):
@@ -34,10 +46,19 @@ class InvenioRecordsDraftState(object):
         self.draft_endpoints = {}
         self.published_endpoints = {}
 
+    def get_schema(self, schema_path):
+        schema_data = current_jsonschemas.get_schema(
+            schema_path, with_refs=False, resolved=False)
+        schema_data = JsonRef.replace_refs(
+            schema_data,
+            base_uri=current_jsonschemas.path_to_url(schema_path),
+            loader=internal_invenio_loader
+        )
+        return current_jsonschemas.resolver_cls(schema_data)
+
     def make_draft_schema(self, config):
         config = self.preprocess_config(config)
-        schema_data = current_jsonschemas.get_schema(
-            config['published_schema'], with_refs=False, resolved=True)
+        schema_data = self.get_schema(config['published_schema'])
 
         removed_properties = config.get('removed_properties', {
             'type': ['required'],
@@ -213,6 +234,9 @@ class InvenioRecordsDraftState(object):
                 app.config['INVENIO_RECORD_DRAFT_SCHEMAS_DIR'], draft_schema)
 
     def _register_blueprints(self, app):
+        if 'invenio_records_rest' not in app.blueprints:
+            return
+
         rest_blueprint = app.blueprints['invenio_records_rest']
         mapping_prefix = app.config.get('SEARCH_INDEX_PREFIX', None)
 

@@ -1,0 +1,13 @@
+{
+  "definitions": {
+    "b": {
+      "type": "object",
+      "required": ["c"],
+      "properties": {
+        "c": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

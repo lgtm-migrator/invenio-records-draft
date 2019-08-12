@@ -1,0 +1,11 @@
+{
+  "type": "object",
+  "properties": {
+    "aa": {
+      "$ref": "../a.json#/definitions/a"
+    }
+  },
+  "required": [
+    "a"
+  ]
+}
