@@ -89,6 +89,8 @@ def create_draft_endpoint(
         edit_permission_factory,
         **kwargs
 ):
+    published_pid_type = kwargs.get('published_pid_type', kwargs.get('pid_type', 'recid'))
+
     draft_kwargs = {
         re.sub('^draft_', '', k): v for k, v in kwargs.items() if not k.startswith('published_')
     }
@@ -97,12 +99,10 @@ def create_draft_endpoint(
 
     draft_kwargs.setdefault('list_route', f'drafts/{url_prefix}/')
 
-    published_pid_type = draft_kwargs.get('pid_type', 'recid')
+    draft_kwargs['pid_type'] = draft_pid_type
 
-    draft_kwargs.setdefault('pid_type', draft_pid_type)
-
-    pid_minter = draft_kwargs.pop('pid_minter', 'recid')
-    pid_fetcher = draft_kwargs.pop('pid_fetcher', 'recid')
+    pid_minter = draft_kwargs.pop('pid_minter', published_pid_type)
+    pid_fetcher = draft_kwargs.pop('pid_fetcher', published_pid_type)
 
     draft_pid_minter = _make_draft_minter(draft_pid_type, pid_minter)
     draft_pid_fetcher = _make_draft_fetcher(draft_pid_type, pid_fetcher)
