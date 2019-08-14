@@ -47,7 +47,7 @@ with open(os.path.join('invenio_records_draft', 'version.py'), 'rt') as fp:
     version = g['__version__']
 
 setup(
-    name="oarepo-invenio-records-draft",
+    name="invenio-records-draft",
     version=version,
     url="https://github.com/oarepo/invenio-records-draft",
     license="MIT",
