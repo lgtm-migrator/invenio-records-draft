@@ -26,6 +26,7 @@ def create_published_endpoint(url_prefix,
                               record_marshmallow, search_index, draft_pid_type,
                               publish_permission_factory, unpublish_permission_factory,
                               edit_permission_factory,
+                              extra_urls,
                               **kwargs):
     published_kwargs = {
         re.sub('^published_', '', k): v for k, v in kwargs.items() if not k.startswith('draft_')
@@ -65,11 +66,12 @@ def create_published_endpoint(url_prefix,
     published_kwargs['links_factory_imp'] = \
         PublishedLinksFactory(published_endpoint,
                               draft_pid_type, draft_endpoint,
-                              published_kwargs.get('links_factory_impl',
+                              published_kwargs.get('links_factory_imp',
                                                    DEFAULT_LINKS_FACTORY),
                               publish_permission_factory,
                               unpublish_permission_factory,
-                              edit_permission_factory)
+                              edit_permission_factory,
+                              extra_urls)
 
     return published_kwargs
 
@@ -87,6 +89,7 @@ def create_draft_endpoint(
         publish_permission_factory,
         unpublish_permission_factory,
         edit_permission_factory,
+        extra_urls,
         **kwargs
 ):
     published_pid_type = kwargs.get('published_pid_type', kwargs.get('pid_type', 'recid'))
@@ -149,11 +152,12 @@ def create_draft_endpoint(
     draft_kwargs['links_factory_imp'] = \
         DraftLinksFactory(draft_endpoint,
                           published_pid_type, published_endpoint,
-                          draft_kwargs.get('links_factory_impl',
+                          draft_kwargs.get('links_factory_imp',
                                            DEFAULT_LINKS_FACTORY),
                           publish_permission_factory,
                           unpublish_permission_factory,
-                          edit_permission_factory)
+                          edit_permission_factory,
+                          extra_urls)
 
     return draft_kwargs
 
@@ -258,7 +262,8 @@ class LinksFactory:
                  other_end_endpoint_name, links_factory,
                  publish_permission_factory,
                  unpublish_permission_factory,
-                 edit_permission_factory):
+                 edit_permission_factory,
+                 extra_urls):
         self.endpoint_name = endpoint_name
         self._links_factory = links_factory
         self.other_end_pid_type = other_end_pid_type
@@ -266,6 +271,7 @@ class LinksFactory:
         self.publish_permission_factory = publish_permission_factory
         self.unpublish_permission_factory = unpublish_permission_factory
         self.edit_permission_factory = edit_permission_factory
+        self.extra_urls = extra_urls
 
     @locked_cached_property
     def links_factory(self):
@@ -281,6 +287,15 @@ class LinksFactory:
         except PIDDoesNotExistError:
             pass
         return None
+    
+    def get_extra_url_rules(self, pid):
+        resp = {}
+        for rule, action in self.extra_urls.items():
+            resp[rule] = url_for(
+                'invenio_records_draft.{0}'.format(
+                    action.view_name.format(self.endpoint_name)
+                ), pid_value=pid.pid_value, _external=True)
+        return resp
 
 
 class DraftLinksFactory(LinksFactory):
@@ -295,6 +310,7 @@ class DraftLinksFactory(LinksFactory):
                 'invenio_records_draft.publish_{0}'.format(self.endpoint_name),
                 pid_value=pid.pid_value, _external=True
             )
+        resp.update(self.get_extra_url_rules(pid))
         return resp
 
 
@@ -318,5 +334,7 @@ class PublishedLinksFactory(LinksFactory):
                 pid_value=pid.pid_value,
                 _external=True
             )
+
+        resp.update(self.get_extra_url_rules(pid))
 
         return resp

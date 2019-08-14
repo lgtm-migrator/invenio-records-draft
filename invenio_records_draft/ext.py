@@ -7,6 +7,7 @@ from urllib.parse import urlsplit, urlunparse
 from elasticsearch import VERSION as ES_VERSION
 from flask import Blueprint, current_app, url_for
 from invenio_base.signals import app_loaded
+from invenio_files_rest.utils import obj_or_import_string
 from invenio_jsonschemas import current_jsonschemas
 from invenio_records_rest import current_records_rest
 from invenio_records_rest.utils import build_default_endpoint_prefixes
@@ -245,6 +246,9 @@ class InvenioRecordsDraftState(object):
 
         permission_factories = {}
 
+        extra_published_record_endpoints = {}
+        extra_draft_record_endpoints = {}
+
         for url_prefix, config in endpoint_configs.items():
             config = copy.copy(config)
 
@@ -282,6 +286,15 @@ class InvenioRecordsDraftState(object):
                 'edit_permission_factory': edit_permission_factory
             }
 
+            extra_published_record_endpoints[url_prefix] = {
+                e: obj_or_import_string(a)
+                for e, a in config.pop('extra_published_record_endpoints', {}).items()
+            }
+            extra_draft_record_endpoints[url_prefix] = {
+                e: obj_or_import_string(a)
+                for e, a in config.pop('extra_draft_record_endpoints', {}).items()
+            }
+
             published_endpoint_config = create_published_endpoint(
                 url_prefix=url_prefix,
                 published_endpoint=published_endpoint,
@@ -291,6 +304,7 @@ class InvenioRecordsDraftState(object):
                 publish_permission_factory=publish_permission_factory,
                 unpublish_permission_factory=unpublish_permission_factory,
                 edit_permission_factory=edit_permission_factory,
+                extra_urls=extra_published_record_endpoints[url_prefix],
                 **config)
 
             draft_index = (
@@ -315,6 +329,7 @@ class InvenioRecordsDraftState(object):
                 publish_permission_factory=publish_permission_factory,
                 unpublish_permission_factory=unpublish_permission_factory,
                 edit_permission_factory=edit_permission_factory,
+                extra_urls=extra_draft_record_endpoints[url_prefix],
                 **config
             )
 
@@ -393,6 +408,24 @@ class InvenioRecordsDraftState(object):
                     draft_record_class=draft_config['record_class'],
                     draft_endpoint_name=draft_endpoint_name
                 ))
+
+            for rule, action in extra_published_record_endpoints[prefix].items():
+                blueprint.add_url_rule(
+                    rule=f'{published_url}{pid_getter(published_config)}/{rule}',
+                    view_func=action.as_view(
+                        action.view_name.format(published_endpoint_name),
+                        draft_config=draft_config,
+                        **published_config
+                    ))
+
+            for rule, action in extra_draft_record_endpoints[prefix].items():
+                blueprint.add_url_rule(
+                    rule=f'{draft_url}{pid_getter(draft_config)}/{rule}',
+                    view_func=action.as_view(
+                        action.view_name.format(draft_endpoint_name),
+                        published_config=published_config,
+                        **draft_config
+                    ))
 
         app.register_blueprint(blueprint)
 
