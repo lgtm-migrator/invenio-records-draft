@@ -208,7 +208,7 @@ for validation errors
 .. code:: json
 
     {
-      "_draft_validation": {
+      "invenio_draft_validation": {
         "type": "object",
         "properties": {
           "valid": {
@@ -216,7 +216,43 @@ for validation errors
           },
           "errors": {
             "type": "object",
-            "enabled": false
+            "properties": {
+              "marshmallow": {
+                "type": "object",
+                "properties": {
+                  "field": {
+                    "type": "keyword"
+                  },
+                  "message": {
+                    "type": "text",
+                    "fields": {
+                      "keyword": {
+                        "type": "keyword"
+                      }
+                    }
+                  }
+                }
+              },
+              "jsonschema": {
+                "type": "object",
+                "properties": {
+                  "field": {
+                    "type": "keyword"
+                  },
+                  "message": {
+                    "type": "text",
+                    "fields": {
+                      "keyword": {
+                        "type": "keyword"
+                      }
+                    }
+                  }
+                }
+              },
+              "other": {
+                "type": "text"
+              }
+            }
           }
         }
       }
