@@ -12,11 +12,11 @@ Invenio Records Draft
         :target: https://coveralls.io/r/oarepo/invenio-records-draft
 
 .. image:: https://img.shields.io/pypi/v/invenio-records-draft.svg
-        :target: https://pypi.org/pypi/invenio-records-draft
+        :target: https://pypi.org/pypi/oarepo-invenio-records-draft
 
 
 
-**Not yet even alpha, do not use !!!**
+**Beta version, use at your own risk!!!**
 
 This library helps to solve the situation where records in Invenio go through draft stage before they
 are published.
@@ -261,7 +261,7 @@ Persistent identifiers
 ----------------------
 
 This library supposes that draft and published records have the same value of their
-persistent identifier and different ``pid_type``s. This way the library is able to distinguish
+persistent identifier and different ``pid_type`` s. This way the library is able to distinguish
 them apart and at the same time keep link between them. If you create your own minters & loaders
 for draft records, you have to honour this.
 

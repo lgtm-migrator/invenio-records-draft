@@ -43,6 +43,11 @@ with open(os.path.join('invenio_records_draft', 'version.py'), 'rt') as fp:
     exec(fp.read(), g)
     version = g['__version__']
 
+from os import path
+this_directory = path.abspath(path.dirname(__file__))
+with open(path.join(this_directory, 'README.rst'), encoding='utf-8') as f:
+    long_description = f.read()
+
 setup(
     name="oarepo-invenio-records-draft",
     version=version,
@@ -69,6 +74,8 @@ setup(
     extras_require=extras_require,
     install_requires=install_requires,
     tests_require=tests_require,
+    long_description=long_description,
+    long_description_content_type='text/x-rst',
     platforms='any',
     classifiers=[
         'Environment :: Web Environment',
