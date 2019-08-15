@@ -7,10 +7,9 @@ from urllib.parse import urlsplit, urlunparse
 from elasticsearch import VERSION as ES_VERSION
 from flask import Blueprint, current_app, url_for
 from invenio_base.signals import app_loaded
-from invenio_files_rest.utils import obj_or_import_string
 from invenio_jsonschemas import current_jsonschemas
 from invenio_records_rest import current_records_rest
-from invenio_records_rest.utils import build_default_endpoint_prefixes
+from invenio_records_rest.utils import build_default_endpoint_prefixes, obj_or_import_string
 from invenio_records_rest.views import create_url_rules
 from invenio_search import current_search
 from invenio_search.utils import schema_to_index
