@@ -15,7 +15,8 @@ def test_draft_link_factory_not_published_no_rights(app, db, schemas, mappings, 
         links_factory=default_links_factory,
         publish_permission_factory=deny_all,
         unpublish_permission_factory=deny_all,
-        edit_permission_factory=deny_all
+        edit_permission_factory=deny_all,
+        extra_urls={}
     )
     # create a request context to invenio-records-rest so that invenio knows it is handling
     # the request and can create link urls properly
@@ -36,7 +37,8 @@ def test_draft_link_factory_not_published_rights(app, db, schemas, mappings, dra
         links_factory=default_links_factory,
         publish_permission_factory=allow_all,
         unpublish_permission_factory=allow_all,
-        edit_permission_factory=allow_all
+        edit_permission_factory=allow_all,
+        extra_urls={}
     )
     # create a request context to invenio-records-rest so that invenio knows it is handling
     # the request and can create link urls properly
@@ -57,7 +59,8 @@ def test_draft_link_factory_published_no_rights(app, db, schemas, mappings, draf
         links_factory=default_links_factory,
         publish_permission_factory=deny_all,
         unpublish_permission_factory=deny_all,
-        edit_permission_factory=deny_all
+        edit_permission_factory=deny_all,
+        extra_urls={}
     )
     # create a request context to invenio-records-rest so that invenio knows it is handling
     # the request and can create link urls properly
@@ -78,7 +81,8 @@ def test_draft_link_factory_published_rights(app, db, schemas, mappings, draft_r
         links_factory=default_links_factory,
         publish_permission_factory=allow_all,
         unpublish_permission_factory=allow_all,
-        edit_permission_factory=allow_all
+        edit_permission_factory=allow_all,
+        extra_urls={}
     )
     # create a request context to invenio-records-rest so that invenio knows it is handling
     # the request and can create link urls properly
@@ -99,7 +103,8 @@ def test_published_link_factory_no_draft_no_rights(app, db, schemas, mappings, p
         links_factory=default_links_factory,
         publish_permission_factory=deny_all,
         unpublish_permission_factory=deny_all,
-        edit_permission_factory=deny_all
+        edit_permission_factory=deny_all,
+        extra_urls={}
     )
     # create a request context to invenio-records-rest so that invenio knows it is handling
     # the request and can create link urls properly
@@ -123,7 +128,8 @@ def test_published_link_factory_no_draft_rights(app, db, schemas, mappings, publ
         links_factory=default_links_factory,
         publish_permission_factory=allow_all,
         unpublish_permission_factory=allow_all,
-        edit_permission_factory=allow_all
+        edit_permission_factory=allow_all,
+        extra_urls={}
     )
     # create a request context to invenio-records-rest so that invenio knows it is handling
     # the request and can create link urls properly
@@ -147,7 +153,8 @@ def test_published_link_factory_draft_no_rights(app, db, schemas, mappings, publ
         links_factory=default_links_factory,
         publish_permission_factory=deny_all,
         unpublish_permission_factory=deny_all,
-        edit_permission_factory=deny_all
+        edit_permission_factory=deny_all,
+        extra_urls={}
     )
     # create a request context to invenio-records-rest so that invenio knows it is handling
     # the request and can create link urls properly
@@ -171,7 +178,8 @@ def test_published_link_factory_draft_rights(app, db, schemas, mappings, publish
         links_factory=default_links_factory,
         publish_permission_factory=allow_all,
         unpublish_permission_factory=allow_all,
-        edit_permission_factory=allow_all
+        edit_permission_factory=allow_all,
+        extra_urls={}
     )
     # create a request context to invenio-records-rest so that invenio knows it is handling
     # the request and can create link urls properly
