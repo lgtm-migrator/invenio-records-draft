@@ -287,7 +287,7 @@ class LinksFactory:
         except PIDDoesNotExistError:
             pass
         return None
-    
+
     def get_extra_url_rules(self, pid):
         resp = {}
         for rule, action in self.extra_urls.items():
