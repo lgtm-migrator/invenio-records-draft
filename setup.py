@@ -13,12 +13,12 @@ install_requires = [
 ]
 
 deploy_requires = [
-    'invenio[base,metadata,elasticsearch6,postgresql]' +
+    'invenio[base,metadata,elasticsearch6,postgresql,auth]' +
     '=={version}'.format(version=INVENIO_VERSION),
 ]
 
 tests_require = [
-    'invenio[base,metadata,elasticsearch6,tests]' +
+    'invenio[base,metadata,elasticsearch6,tests,auth]' +
     '=={version}'.format(version=INVENIO_VERSION),
 ]
 
