@@ -44,12 +44,13 @@ class MarshmallowValidator:
             'pid': pid
         }
 
-        result = self.marshmallow_schema_class(context=context).load(data)
+        marshmallow_instance = self.marshmallow_schema_class(context=context)
+        result = marshmallow_instance.load(data)
 
         if result.errors:
             raise MarshmallowErrors(result.errors)
 
-        data = result.data
+        data = marshmallow_instance.dump(result.data).data
         data['$schema'] = (
                 current_jsonschemas.path_to_url(self.published_record_schema) or
                 self.published_record_schema
