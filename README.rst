@@ -80,55 +80,55 @@ Library principles:
 
 1. Draft records should follow the same json schema as published records with the exception
    that all/most properties are not required even though they are marked as such
-   ✓
+
 2. Draft records should follow the same marshmallow schema as published records with
    some exceptions:
 
-    a. all/most properties are not required even though they are marked as such ✓
+    a. all/most properties are not required even though they are marked as such
     b. for properties that have validators attached these validations will be ignored,
-       unless they are explicitly marked with ``draft_allowed``. ✓
+       unless they are explicitly marked with ``draft_allowed``.
 
 3. If wished, draft records may be configured not follow the schema at all. In this case,
-   the record is not indexed in elasticsearch at all. ✓
+   the record is not indexed in elasticsearch at all.
 
 4. "Draft" records live at a different endpoint and different ES index than published ones.
    The recommended URL is ``/api/records`` for the published records and
-   ``/api/drafts/records`` for drafts ✓
+   ``/api/drafts/records`` for drafts
 
 5. Draft and published records share the same value of pid but have two different pid types ✓
 
 6. Published records can not be directly created/updated/patched. Draft records can be
-   created/updated/patched. ✓
+   created/updated/patched.
 
 7. Invenio record contains ``Link`` header and ``links`` section in the JSON payload.
    Links of a published record contain (apart from ``self``):
 
     a. ``draft`` - a url that links to the "draft" version of the record. This url is present
        only if the draft version of the record exists and the caller has the rights
-       to edit the draft ✓
+       to edit the draft
     b. ``edit`` - URL to a handler that creates a draft version of the record and then
        returns HTTP 302 redirect to the draft version. This url is present only if the
-       draft version does not exist ✓
+       draft version does not exist
     c. ``unpublish`` - URL to a handler that creates a draft version of the record
        if it does not exist, deletes the published version and then returns HTTP 302 to the draft.
-       ✓
+
 
 8. On a draft record the ``links`` contain (apart from ``self``):
 
     a. ``published`` - a url that links to the "published" version of the record. This url is present
-       only if the published version of the record exists ✓
+       only if the published version of the record exists
 
     b. ``publish`` - a POST to this url publishes the record. The JSONSchema and marshmallow
        schema of the published record must pass. After the publishing the draft record is
-       deleted. HTTP 302 is returned pointing to the published record. ✓
+       deleted. HTTP 302 is returned pointing to the published record.
 
-9. The serialized representation of a draft record contains a section named ``_draft_validation``.
+9. The serialized representation of a draft record contains a section named ``invenio_draft_validation``.
    This section contains the result of marshmallow and JSONSchema validation against original
    schemas.
 
-10. Deletion of a published record does not delete the draft record. ✓
+10. Deletion of a published record does not delete the draft record.
 
-11. Deletion of a draft record does not delete the published record. ✓
+11. Deletion of a draft record does not delete the published record.
 
 
 Usage
