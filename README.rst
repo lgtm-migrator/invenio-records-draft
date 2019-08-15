@@ -11,7 +11,7 @@ Invenio Records Draft
 .. image:: https://img.shields.io/coveralls/oarepo/invenio-records-draft.svg
         :target: https://coveralls.io/r/oarepo/invenio-records-draft
 
-.. image:: https://img.shields.io/pypi/v/invenio-records-draft.svg
+.. image:: https://img.shields.io/pypi/v/oarepo-invenio-records-draft.svg
         :target: https://pypi.org/pypi/oarepo-invenio-records-draft
 
 
