@@ -1,3 +1,5 @@
+import datetime
+import json
 import logging
 import uuid
 
@@ -50,7 +52,7 @@ class MarshmallowValidator:
         if result.errors:
             raise MarshmallowErrors(result.errors)
 
-        data = marshmallow_instance.dump(result.data).data
+        data = result.data
         data['$schema'] = (
                 current_jsonschemas.path_to_url(self.published_record_schema) or
                 self.published_record_schema
@@ -60,7 +62,6 @@ class MarshmallowValidator:
 
 
 class DraftEnabledRecordMixin:
-
     def publish(self, draft_pid,
                 published_record_class, published_pid_type,
                 remove_draft=True):
