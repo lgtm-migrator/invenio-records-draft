@@ -15,6 +15,7 @@ from invenio_records_rest.serializers import (
     search_responsify,
 )
 from invenio_records_rest.utils import allow_all, deny_all, obj_or_import_string
+from werkzeug.routing import BuildError
 
 from invenio_records_draft.marshmallow import DraftSchemaWrapper
 
@@ -291,10 +292,13 @@ class LinksFactory:
     def get_extra_url_rules(self, pid):
         resp = {}
         for rule, action in self.extra_urls.items():
-            resp[rule] = url_for(
-                'invenio_records_draft.{0}'.format(
-                    action.view_name.format(self.endpoint_name)
-                ), pid_value=pid.pid_value, _external=True)
+            try:
+                resp[rule] = url_for(
+                    'invenio_records_draft.{0}'.format(
+                        action.view_name.format(self.endpoint_name)
+                    ), pid_value=pid.pid_value, _external=True)
+            except BuildError:
+                pass
         return resp
 
 
