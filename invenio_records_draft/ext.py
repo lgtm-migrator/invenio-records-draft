@@ -15,6 +15,7 @@ from invenio_search import current_search
 from invenio_search.utils import schema_to_index
 from jsonref import JsonRef
 
+from invenio_records_draft.api import RecordDraftApi
 from invenio_records_draft.endpoints import (
     create_draft_endpoint,
     create_published_endpoint,
@@ -37,9 +38,10 @@ def internal_invenio_loader(relative_schema, *args, **kwargs):
     return current_jsonschemas.get_schema(path)
 
 
-class InvenioRecordsDraftState(object):
+class InvenioRecordsDraftState(RecordDraftApi):
 
     def __init__(self, app):
+        super().__init__()
         self.app = app
         self.published_schemas = {}
         self.draft_schemas = {}
@@ -174,6 +176,12 @@ class InvenioRecordsDraftState(object):
         config['draft_mapping_file'] = os.path.join(
             self.app.config['INVENIO_RECORD_DRAFT_MAPPINGS_DIR'],
             f'{draft_index}.json')
+
+        self.pid_type_to_record_class[config['draft_pid_type']] = \
+            obj_or_import_string(config['draft_record_class'])
+
+        self.pid_type_to_record_class[config['published_pid_type']] = \
+            obj_or_import_string(config['published_record_class'])
 
         return config
 

@@ -1,15 +1,23 @@
 from __future__ import absolute_import, print_function
 
 from blinker import Namespace
+from enum import Enum
 
 _signals = Namespace()
+
+
+class CollectAction(Enum):
+    PUBLISH = 'publish'
+    UNPUBLISH = 'unpublish'
+    EDIT = 'edit'
+
 
 collect_records = _signals.signal('collect_records')
 """Signal sent to collect all objects that should be published.
 
 :param  record: the record being published
-:param  publishing: boolean, True if publishing, False if unpublishing
-:return list of additional records that should be published
+:param  action: CollectAction
+:return list of RecordContext instances of records that should be published
 """
 
 check_can_publish = _signals.signal('check_publish')
@@ -25,6 +33,13 @@ before_publish = _signals.signal('before_publish')
 A notification called before the records are published
 
 :param records: a list of records to publish.
+"""
+
+before_record_published = _signals.signal('before_record_published')
+"""
+A notification called before the records are published
+
+:param metadata: metadata of the record that will be published
 """
 
 after_publish = _signals.signal('after_publish')
@@ -80,4 +95,3 @@ A notification called after the records have been prepared for editing
 :param records: a list of tuples (published_record, draft_record). The published
 record is marked as is.
 """
-
