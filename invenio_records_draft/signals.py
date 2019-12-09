@@ -35,6 +35,15 @@ A notification called before the records are published
 :param records: a list of records to publish.
 """
 
+before_publish_record = _signals.signal('before_publish_record')
+"""
+A notification called before a record is published
+
+:param metadata: metadata of the published record
+:param record: RecordContext of the draft record 
+:param collected_records: All collected records
+"""
+
 before_record_published = _signals.signal('before_record_published')
 """
 A notification called before the records are published

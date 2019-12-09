@@ -12,7 +12,7 @@ from invenio_search import current_search_client
 from invenio_records_draft.record import InvalidRecordException
 from invenio_records_draft.signals import collect_records, CollectAction, check_can_publish, before_publish, \
     after_publish, before_record_published, check_can_unpublish, before_unpublish, after_unpublish, \
-    before_record_unpublished, check_can_edit, before_edit, after_edit
+    before_record_unpublished, check_can_edit, before_edit, after_edit, before_publish_record
 
 logger = logging.getLogger('invenio-records-draft.api')
 
@@ -21,6 +21,9 @@ class RecordContext:
     def __init__(self, record_pid, record, **kwargs):
         self.record_pid = record_pid
         self.record = record
+        # these two are filled during the record collection phase
+        self.draft_record_url = None
+        self.published_record_url = None
         for k, v in kwargs.items():
             setattr(self, k, v)
 
@@ -44,6 +47,14 @@ class RecordDraftApi:
 
     @property
     def published_pidtype_to_draft(self) -> Dict[str, RecordType]:
+        raise NotImplementedError()
+
+    @property
+    def draft_endpoints(self):
+        raise NotImplementedError()
+
+    @property
+    def published_endpoints(self):
         raise NotImplementedError()
 
     @staticmethod
@@ -83,8 +94,7 @@ class RecordDraftApi:
                 published_record_class = self.published_record_class_for_draft_pid(draft_pid)
                 published_record_pid_type = self.published_record_pid_type_for_draft_pid(draft_pid)
                 published_record, published_pid = self.publish_record_internal(
-                    draft_record.record, draft_pid,
-                    published_record_class, published_record_pid_type
+                    draft_record, published_record_class, published_record_pid_type
                 )
                 published_record_context = RecordContext(record=published_record, record_pid=published_pid)
                 result.append((draft_record, published_record_context))
@@ -113,7 +123,7 @@ class RecordDraftApi:
         current_search_client.indices.flush()
 
         return result
-    
+
     def edit(self, record: RecordContext):
         with db.session.begin_nested():
             # collect all records to be draft (for example, references etc)
@@ -214,10 +224,31 @@ class RecordDraftApi:
     def draft_record_pid_type_for_published_pid(self, published_pid):
         return self.published_pidtype_to_draft[published_pid.pid_type].pid_type
 
-    def publish_record_internal(self, draft_record, draft_pid,
-                                published_record_class,
-                                published_pid_type):
+    def is_draft(self, pid):
+        return pid.pid_type in self.draft_pidtype_to_published
 
+    def is_published(self, pid):
+        return pid.pid_type in self.published_pidtype_to_draft
+
+    def get_record(self, pid, with_deleted=False):
+        if self.is_draft(pid):
+            endpoints = self.draft_endpoints
+        elif self.is_published(pid):
+            endpoints = self.published_endpoints
+        else:
+            raise KeyError('pid type %s is not draft nor published type' % pid.pid_type)
+        for endpoint in endpoints.values():
+            if endpoint['pid_type'] == pid.pid_type:
+                return endpoint['record_class'].get_record(pid.object_uuid,
+                                                           with_deleted=with_deleted)
+        raise KeyError('PID type %s not registered in draft or published endpoints' % pid.pid_type)
+
+    def publish_record_internal(self, record_context,
+                                published_record_class,
+                                published_pid_type,
+                                collected_records):
+        draft_record = record_context.record
+        draft_pid = record_context.record_pid
         # clone metadata
         metadata = dict(draft_record)
         if 'invenio_draft_validation' in metadata:
@@ -229,7 +260,8 @@ class RecordDraftApi:
         # note: the passed record must fill in the schema otherwise the published record will be
         # without any schema and will not get indexed
         metadata.pop('$schema', None)
-
+        before_publish_record.send(draft_record, metadata=metadata, record=record_context,
+                                   collected_records=collected_records)
         try:
             published_pid = PersistentIdentifier.get(published_pid_type, draft_pid.pid_value)
 
@@ -326,8 +358,8 @@ class RecordDraftApi:
         before_record_unpublished.send(published_record, metadata=metadata)
         draft_record = draft_record_class.create(metadata, id_=id)
         draft_pid = PersistentIdentifier.create(pid_type=draft_pid_type,
-                                    pid_value=published_pid.pid_value, status=PIDStatus.REGISTERED,
-                                    object_type='rec', object_uuid=id)
+                                                pid_value=published_pid.pid_value, status=PIDStatus.REGISTERED,
+                                                object_type='rec', object_uuid=id)
         return draft_record, draft_pid
 
     def _update_draft_record(self, draft_pid, metadata,
@@ -351,3 +383,10 @@ class RecordDraftApi:
                                draft_pid.pid_type)
 
         return draft_record, draft_pid
+
+
+def find_endpoint_by_pid_type(endpoints, pid_type):
+    for endpoint in endpoints.values():
+        if endpoint['pid_type'] == pid_type:
+            return endpoint
+    raise KeyError('Endpoint for pid type %s not found' % pid_type)

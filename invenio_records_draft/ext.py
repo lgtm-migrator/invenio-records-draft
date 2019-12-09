@@ -10,18 +10,20 @@ from invenio_base.signals import app_loaded
 from invenio_jsonschemas import current_jsonschemas
 from invenio_records_rest import current_records_rest
 from invenio_records_rest.utils import build_default_endpoint_prefixes, obj_or_import_string
-from invenio_records_rest.views import create_url_rules
+from invenio_records_rest.views import create_url_rules, RecordResource
 from invenio_search import current_search
 from invenio_search.utils import schema_to_index
 from jsonref import JsonRef
 from werkzeug.utils import cached_property
 
-from invenio_records_draft.api import RecordDraftApi, RecordType
+from invenio_records_draft.api import RecordDraftApi, RecordType, RecordContext, find_endpoint_by_pid_type
 from invenio_records_draft.endpoints import (
     create_draft_endpoint,
     create_published_endpoint,
     pid_getter,
 )
+from invenio_records_draft.proxies import current_drafts
+from invenio_records_draft.signals import collect_records, CollectAction
 from invenio_records_draft.views import (
     EditRecordAction,
     PublishRecordAction,
@@ -486,3 +488,36 @@ class InvenioRecordsDraft(object):
 
         app.config['INVENIO_RECORD_DRAFT_MAPPINGS_DIR'] = os.path.join(
             app.instance_path, 'draft_mappings')
+
+
+@collect_records.connect
+def collect_referenced_records(sender, record: RecordContext = None, action=None):
+    # set the record url if not initially set
+    if not getattr(record, 'record_url', None):
+        # add the external url of the record
+        if action == CollectAction.PUBLISH:
+            endpoint = find_endpoint_by_pid_type(current_drafts.draft_endpoints,
+                                                 record.record_pid.pid_type)
+        else:
+            endpoint = find_endpoint_by_pid_type(current_drafts.published_endpoints,
+                                                 record.record_pid.pid_type)
+        view_name = RecordResource.view_name.format(endpoint['endpoint'])
+        record.record_url = url_for(view_name, _external=True,
+                                    pid_value=record.record_pid.pid_value)
+
+    # add the external published and draft urls of the record
+    if action == CollectAction.PUBLISH:
+        record.draft_record_url = record.record_url
+        endpoint = find_endpoint_by_pid_type(current_drafts.published_endpoints,
+                                             record.record_pid.pid_type)
+        view_name = RecordResource.view_name.format(endpoint['endpoint'])
+        record.published_record_url = url_for(view_name, _external=True,
+                                              pid_value=record.record_pid.pid_value)
+    else:
+        record.published_record_url = record.record_url
+
+        endpoint = find_endpoint_by_pid_type(current_drafts.draft_endpoints,
+                                             record.record_pid.pid_type)
+        view_name = RecordResource.view_name.format(endpoint['endpoint'])
+        record.draft_record_url = url_for(view_name, _external=True,
+                                          pid_value=record.record_pid.pid_value)
