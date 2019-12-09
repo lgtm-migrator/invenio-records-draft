@@ -5,6 +5,8 @@ from invenio_pidstore.errors import PIDDoesNotExistError
 from invenio_pidstore.models import PersistentIdentifier, PIDStatus
 from invenio_records import Record
 
+from invenio_records_draft.api import RecordContext
+from invenio_records_draft.proxies import current_drafts
 from invenio_records_draft.record import (
     DraftEnabledRecordMixin,
     InvalidRecordException,
@@ -49,9 +51,7 @@ def test_publish_record(app, db, schemas):
 
         with pytest.raises(InvalidRecordException):
             # title is required but not in rec, so should fail
-            rec.publish(draft_pid,
-                        TestPublishedRecord, 'recid',
-                        remove_draft=True)
+            current_drafts.publish(RecordContext(record=rec, record_pid=draft_pid))
 
         with pytest.raises(PIDDoesNotExistError):
             # no record should be created
@@ -62,9 +62,7 @@ def test_publish_record(app, db, schemas):
         rec.commit()
 
         # and publish it again
-        rec.publish(draft_pid,
-                    TestPublishedRecord, 'recid',
-                    remove_draft=True)
+        current_drafts.publish(RecordContext(record=rec, record_pid=draft_pid))
 
         # draft should be gone
         draft_pid = PersistentIdentifier.get(pid_type='drecid', pid_value='1')
@@ -94,9 +92,7 @@ def test_publish_record_marshmallow(app, db, schemas):
 
         with pytest.raises(InvalidRecordException):
             # title is required but not in rec, so should fail
-            rec.publish(draft_pid,
-                        TestPublishedRecord, 'recid',
-                        remove_draft=True)
+            current_drafts.publish(RecordContext(record=rec, record_pid=draft_pid))
 
         with pytest.raises(PIDDoesNotExistError):
             # no record should be created
@@ -109,9 +105,7 @@ def test_publish_record_marshmallow(app, db, schemas):
         assert rec['invenio_draft_validation']['valid']
 
         # and publish it again
-        rec.publish(draft_pid,
-                    TestPublishedRecord, 'recid',
-                    remove_draft=True)
+        current_drafts.publish(RecordContext(record=rec, record_pid=draft_pid))
 
         # draft should be gone
         draft_pid = PersistentIdentifier.get(pid_type='drecid', pid_value='1')
@@ -154,9 +148,7 @@ def test_publish_record_with_previous_version(app, db, schemas):
         print(draft_record['invenio_draft_validation'])
 
         # and publish it again
-        draft_record.publish(draft_pid,
-                             TestPublishedRecord, 'recid',
-                             remove_draft=True)
+        current_drafts.publish(RecordContext(record=draft_record, record_pid=draft_pid))
 
         # draft should be gone
         draft_pid = PersistentIdentifier.get(pid_type='drecid', pid_value='1')
@@ -179,7 +171,8 @@ def test_publish_deleted_published(app, db, schemas):
         published_uuid = uuid.uuid4()
         published_record = TestPublishedRecord.create({
             'id': '1',
-            'title': '11'
+            'title': '11',
+            '$schema': 'records/record-v1.0.0.json'
         }, id_=published_uuid)
         published_pid = PersistentIdentifier.create(
             pid_type='recid', pid_value='1', status=PIDStatus.REGISTERED,
@@ -205,9 +198,7 @@ def test_publish_deleted_published(app, db, schemas):
     with db.session.begin_nested():
         rec = TestDraftRecord.get_record(draft_uuid)
         draft_pid = PersistentIdentifier.get(pid_type='drecid', pid_value='1')
-        rec.publish(draft_pid,
-                    TestPublishedRecord, 'recid',
-                    remove_draft=True)
+        current_drafts.publish(RecordContext(record=rec, record_pid=draft_pid))
 
     with db.session.begin_nested():
         # draft should be gone
@@ -258,9 +249,7 @@ def test_publish_redirected_published(app, db, schemas):
         rec = TestDraftRecord.get_record(draft_uuid)
         draft_pid = PersistentIdentifier.get(pid_type='drecid', pid_value='1')
         with pytest.raises(NotImplementedError):
-            rec.publish(draft_pid,
-                        TestPublishedRecord, 'recid',
-                        remove_draft=True)
+            current_drafts.publish(RecordContext(record=rec, record_pid=draft_pid))
 
 
 def test_unpublish_record(app, db, schemas):

@@ -32,9 +32,13 @@ RecordType = namedtuple('RecordType', 'record_class pid_type')
 
 class RecordDraftApi:
 
-    def __init__(self):
-        self.pid_type_to_record_class = {}
-        self.draft_pidtype_to_published: Dict[str, RecordType] = {}
+    @property
+    def pid_type_to_record_class(self):
+        raise NotImplementedError()
+
+    @property
+    def draft_pidtype_to_published(self) -> Dict[str, RecordType]:
+        raise NotImplementedError()
 
     @staticmethod
     def collect_records_for_action(record: RecordContext, action) -> List[RecordContext]:
@@ -62,7 +66,7 @@ class RecordDraftApi:
 
             # for each collected record, check if can be published
             for draft_record in collected_records:
-                check_can_publish.send(record, draft_record)
+                check_can_publish.send(record, record=draft_record)
 
             before_publish.send(collected_records)
 
@@ -76,7 +80,7 @@ class RecordDraftApi:
                     draft_record.record, draft_pid,
                     published_record_class, published_record_pid_type
                 )
-                published_record_context = RecordContext(published_record, published_pid)
+                published_record_context = RecordContext(record=published_record, record_pid=published_pid)
                 result.append((draft_record, published_record_context))
 
             after_publish.send(result)
@@ -86,17 +90,14 @@ class RecordDraftApi:
                 draft_record.record.delete()
                 # mark all object pids as deleted
                 all_pids = PersistentIdentifier.query.filter(
-                    PersistentIdentifier.object_type == draft_record.record_pid.draft_pid.object_type,
-                    PersistentIdentifier.object_uuid == draft_record.record_pid.draft_pid.object_uuid,
+                    PersistentIdentifier.object_type == draft_record.record_pid.object_type,
+                    PersistentIdentifier.object_uuid == draft_record.record_pid.object_uuid,
                 ).all()
                 for rec_pid in all_pids:
                     if not rec_pid.is_deleted():
                         rec_pid.delete()
 
                 published_record.record.commit()
-        db.session.commit()
-        for _, published_record in result:
-            RecordIndexer().index(published_record)
 
         return result
 
@@ -177,10 +178,10 @@ class RecordDraftApi:
         if not timestamp or published_record.updated < timestamp:
             before_record_published.send(published_record, metadata=metadata)
             published_record.update(metadata)
-            if not published_record['$schema']:  # pragma no cover
+            if not published_record.get('$schema'):  # pragma no cover
                 logger.warning('Updated draft record does not have a $schema metadata. '
                                'Please use a Record implementation that adds $schema '
-                               '(for example in validate() method). Draft PID Type %s',
+                               '(in validate() and update() method). Draft PID Type %s',
                                published_pid.pid_type)
 
         return published_record, published_pid

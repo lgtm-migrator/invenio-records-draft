@@ -62,14 +62,7 @@ class MarshmallowValidator:
 
 
 class DraftEnabledRecordMixin:
-    def publish(self, draft_pid,
-                published_record_class, published_pid_type,
-                remove_draft=True):
-
-        return self.publish_record(
-            self, draft_pid, published_record_class, published_pid_type,
-            remove_draft)
-
+    
     def draft(self, published_pid, draft_record_class, draft_pid_type):
         return self.draft_record(self, published_pid, draft_record_class, draft_pid_type)
 

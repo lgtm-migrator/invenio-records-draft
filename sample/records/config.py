@@ -36,9 +36,12 @@ class PublishedRecord(DraftEnabledRecordMixin, Record):
         self['$schema'] = current_jsonschemas.path_to_url('records/record-v1.0.0.json')
         return super().validate(**kwargs)
 
+    def update(self, other, **kwargs):
+        super().update(other, **kwargs)
+        self['$schema'] = current_jsonschemas.path_to_url('records/record-v1.0.0.json')
+
 
 class DraftRecord(DraftEnabledRecordMixin, Record):
-
     draft_validator = MarshmallowValidator(
         'sample.records.marshmallow:MetadataSchemaV1',
         'records/record-v1.0.0.json'
@@ -47,6 +50,10 @@ class DraftRecord(DraftEnabledRecordMixin, Record):
     def validate(self, **kwargs):
         self['$schema'] = current_jsonschemas.path_to_url('draft/records/record-v1.0.0.json')
         return super().validate(**kwargs)
+
+    def update(self, other, **kwargs):
+        super().update(other, **kwargs)
+        self['$schema'] = current_jsonschemas.path_to_url('draft/records/record-v1.0.0.json')
 
 
 DRAFT_ENABLED_RECORDS_REST_ENDPOINTS = {

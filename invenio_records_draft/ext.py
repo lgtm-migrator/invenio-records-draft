@@ -14,8 +14,9 @@ from invenio_records_rest.views import create_url_rules
 from invenio_search import current_search
 from invenio_search.utils import schema_to_index
 from jsonref import JsonRef
+from werkzeug.utils import cached_property
 
-from invenio_records_draft.api import RecordDraftApi
+from invenio_records_draft.api import RecordDraftApi, RecordType
 from invenio_records_draft.endpoints import (
     create_draft_endpoint,
     create_published_endpoint,
@@ -351,13 +352,6 @@ class InvenioRecordsDraftState(RecordDraftApi):
             self.draft_endpoints[url_prefix] = draft_endpoint_config
             self.published_endpoints[url_prefix] = published_endpoint_config
 
-            self.pid_type_to_record_class[config['draft_pid_type']] = \
-                obj_or_import_string(config['draft_record_class'])
-
-            self.pid_type_to_record_class[config['published_pid_type']] = \
-                obj_or_import_string(config['published_record_class'])
-
-
         state = rest_blueprint.make_setup_state(app, {}, False)
         for deferred in rest_blueprint.deferred_functions[last_deferred_function_index:]:
             deferred(state)
@@ -436,6 +430,19 @@ class InvenioRecordsDraftState(RecordDraftApi):
                     ))
 
         app.register_blueprint(blueprint)
+
+    @property
+    def pid_type_to_record_class(self):
+        raise NotImplementedError()
+
+    @cached_property
+    def draft_pidtype_to_published(self):
+        return {
+            self.draft_endpoints[end]['pid_type']:
+                RecordType(self.published_endpoints[end]['record_class'],
+                           self.published_endpoints[end]['pid_type'])
+            for end in self.draft_endpoints
+        }
 
 
 def get_search_index(json_schemas, url_prefix):
