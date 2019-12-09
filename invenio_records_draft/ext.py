@@ -431,10 +431,6 @@ class InvenioRecordsDraftState(RecordDraftApi):
 
         app.register_blueprint(blueprint)
 
-    @property
-    def pid_type_to_record_class(self):
-        raise NotImplementedError()
-
     @cached_property
     def draft_pidtype_to_published(self):
         return {
@@ -442,6 +438,15 @@ class InvenioRecordsDraftState(RecordDraftApi):
                 RecordType(self.published_endpoints[end]['record_class'],
                            self.published_endpoints[end]['pid_type'])
             for end in self.draft_endpoints
+        }
+
+    @cached_property
+    def published_pidtype_to_draft(self):
+        return {
+            self.published_endpoints[end]['pid_type']:
+                RecordType(self.draft_endpoints[end]['record_class'],
+                           self.draft_endpoints[end]['pid_type'])
+            for end in self.published_endpoints
         }
 
 

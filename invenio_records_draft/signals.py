@@ -65,6 +65,13 @@ A notification called before the records are unpublished
 :param records: a list of records to unpublish
 """
 
+before_record_unpublished = _signals.signal('before_record_unpublished')
+"""
+A notification called before the records are unpublished
+
+:param metadata: metadata of the record that will be unpublished
+"""
+
 after_unpublish = _signals.signal('after_unpublish')
 """
 A notification called after the records have been unpublished

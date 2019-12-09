@@ -267,8 +267,7 @@ def test_unpublish_record(app, db, schemas):
         )
         assert published_record.revision_id == 0
 
-        published_record.unpublish(published_pid,
-                                   TestDraftRecord, 'drecid')
+        current_drafts.unpublish(RecordContext(record=published_record, record_pid=published_pid))
 
         # published version should be gone
         published_pid = PersistentIdentifier.get(pid_type='recid', pid_value='1')
@@ -281,7 +280,7 @@ def test_unpublish_record(app, db, schemas):
         rec = TestDraftRecord.get_record(draft_pid.object_uuid)
         assert rec.model.json is not None
         assert rec['title'] == '11'
-        assert rec.revision_id == 0
+        assert rec.revision_id == 1
 
 
 def test_unpublish_record_existing_draft(app, db, schemas):
@@ -310,8 +309,7 @@ def test_unpublish_record_existing_draft(app, db, schemas):
         )
         assert draft_record.revision_id == 0
 
-        published_record.unpublish(published_pid,
-                                   TestDraftRecord, 'drecid')
+        current_drafts.unpublish(RecordContext(record=published_record, record_pid=published_pid))
 
         # published version should be gone
         published_pid = PersistentIdentifier.get(pid_type='recid', pid_value='1')
@@ -324,7 +322,7 @@ def test_unpublish_record_existing_draft(app, db, schemas):
         rec = TestDraftRecord.get_record(draft_pid.object_uuid)
         assert rec.model.json is not None
         assert rec['title'] == '22'  # should not be changed on a newer record
-        assert rec.revision_id == 0
+        assert rec.revision_id == 1
 
 
 def test_unpublish_record_redirected_draft(app, db, schemas):
@@ -360,8 +358,8 @@ def test_unpublish_record_redirected_draft(app, db, schemas):
 
     with db.session.begin_nested():
         with pytest.raises(NotImplementedError):
-            published_record.unpublish(published_pid,
-                                       TestDraftRecord, 'drecid')
+            current_drafts.unpublish(
+                RecordContext(record=published_record, record_pid=published_pid))
 
 
 def test_draft_record(app, db, schemas):
@@ -379,8 +377,7 @@ def test_draft_record(app, db, schemas):
         )
         assert published_record.revision_id == 0
 
-        published_record.draft(published_pid,
-                               TestDraftRecord, 'drecid')
+        current_drafts.edit(RecordContext(record=published_record, record_pid=published_pid))
 
         # published version should be there unchanged
         published_pid = PersistentIdentifier.get(pid_type='recid', pid_value='1')
@@ -395,7 +392,7 @@ def test_draft_record(app, db, schemas):
         rec = TestDraftRecord.get_record(draft_pid.object_uuid)
         assert rec.model.json is not None
         assert rec['title'] == '11'
-        assert rec.revision_id == 0
+        assert rec.revision_id == 1
 
 
 def test_draft_record_existing_draft(app, db, schemas):
@@ -424,8 +421,7 @@ def test_draft_record_existing_draft(app, db, schemas):
         )
         assert draft_record.revision_id == 0
 
-        published_record.draft(published_pid,
-                               TestDraftRecord, 'drecid')
+        current_drafts.edit(RecordContext(record=published_record, record_pid=published_pid))
 
         # published version should be there unchanged
         published_pid = PersistentIdentifier.get(pid_type='recid', pid_value='1')
@@ -440,7 +436,7 @@ def test_draft_record_existing_draft(app, db, schemas):
         rec = TestDraftRecord.get_record(draft_pid.object_uuid)
         assert rec.model.json is not None
         assert rec['title'] == '22'  # should not be changed on a newer record
-        assert rec.revision_id == 0
+        assert rec.revision_id == 1
 
 
 def test_draft_record_deleted_draft(app, db, schemas):
@@ -475,8 +471,7 @@ def test_draft_record_deleted_draft(app, db, schemas):
         db.session.add(draft_pid)
 
     with db.session.begin_nested():
-        published_record.draft(published_pid,
-                               TestDraftRecord, 'drecid')
+        current_drafts.edit(RecordContext(record=published_record, record_pid=published_pid))
 
         # published version should be there unchanged
         published_pid = PersistentIdentifier.get(pid_type='recid', pid_value='1')
@@ -491,4 +486,4 @@ def test_draft_record_deleted_draft(app, db, schemas):
         rec = TestDraftRecord.get_record(draft_pid.object_uuid)
         assert rec.model.json is not None
         assert rec['title'] == '11'
-        assert rec.revision_id == 3
+        assert rec.revision_id == 4

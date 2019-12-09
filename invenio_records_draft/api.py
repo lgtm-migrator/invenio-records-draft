@@ -11,7 +11,8 @@ from invenio_search import current_search_client
 
 from invenio_records_draft.record import InvalidRecordException
 from invenio_records_draft.signals import collect_records, CollectAction, check_can_publish, before_publish, \
-    after_publish, before_record_published
+    after_publish, before_record_published, check_can_unpublish, before_unpublish, after_unpublish, \
+    before_record_unpublished, check_can_edit, before_edit, after_edit
 
 logger = logging.getLogger('invenio-records-draft.api')
 
@@ -39,6 +40,10 @@ class RecordDraftApi:
 
     @property
     def draft_pidtype_to_published(self) -> Dict[str, RecordType]:
+        raise NotImplementedError()
+
+    @property
+    def published_pidtype_to_draft(self) -> Dict[str, RecordType]:
         raise NotImplementedError()
 
     @staticmethod
@@ -108,6 +113,88 @@ class RecordDraftApi:
         current_search_client.indices.flush()
 
         return result
+    
+    def edit(self, record: RecordContext):
+        with db.session.begin_nested():
+            # collect all records to be draft (for example, references etc)
+            collected_records = self.collect_records_for_action(record, CollectAction.EDIT)
+
+            # for each collected record, check if can be draft
+            for published_record in collected_records:
+                check_can_edit.send(record, record=published_record)
+
+            before_edit.send(collected_records)
+
+            result = []
+            # publish in reversed order
+            for published_record in reversed(collected_records):
+                published_pid = published_record.record_pid
+                draft_record_class = self.draft_record_class_for_published_pid(published_pid)
+                draft_record_pid_type = self.draft_record_pid_type_for_published_pid(published_pid)
+                draft_record, draft_pid = self.draft_record_internal(
+                    published_record.record, published_pid,
+                    draft_record_class, draft_record_pid_type
+                )
+                draft_record_context = RecordContext(record=draft_record, record_pid=draft_pid)
+                result.append((published_record, draft_record_context))
+
+            after_edit.send(result)
+
+            for published_record, draft_record in result:
+                draft_record.record.commit()
+                RecordIndexer().index(draft_record.record)
+
+        current_search_client.indices.flush()
+
+        return result
+
+    def unpublish(self, record: RecordContext):
+        with db.session.begin_nested():
+            # collect all records to be draft (for example, references etc)
+            collected_records = self.collect_records_for_action(record, CollectAction.UNPUBLISH)
+
+            # for each collected record, check if can be draft
+            for published_record in collected_records:
+                check_can_unpublish.send(record, record=published_record)
+
+            before_unpublish.send(collected_records)
+
+            result = []
+            # publish in reversed order
+            for published_record in reversed(collected_records):
+                published_pid = published_record.record_pid
+                draft_record_class = self.draft_record_class_for_published_pid(published_pid)
+                draft_record_pid_type = self.draft_record_pid_type_for_published_pid(published_pid)
+                draft_record, draft_pid = self.draft_record_internal(
+                    published_record.record, published_pid,
+                    draft_record_class, draft_record_pid_type
+                )
+                draft_record_context = RecordContext(record=draft_record, record_pid=draft_pid)
+                result.append((published_record, draft_record_context))
+
+            after_unpublish.send(result)
+
+            for published_record, draft_record in result:
+                # delete the record
+                published_record.record.delete()
+                try:
+                    RecordIndexer().delete(published_record.record, refresh=True)
+                except:
+                    logger.debug('Error deleting record', published_record.record_pid)
+                draft_record.record.commit()
+                RecordIndexer().index(draft_record.record)
+                # mark all object pids as deleted
+                all_pids = PersistentIdentifier.query.filter(
+                    PersistentIdentifier.object_type == published_record.record_pid.object_type,
+                    PersistentIdentifier.object_uuid == published_record.record_pid.object_uuid,
+                ).all()
+                for rec_pid in all_pids:
+                    if not rec_pid.is_deleted():
+                        rec_pid.delete()
+
+        current_search_client.indices.flush()
+
+        return result
 
     def pid_for_record(self, rec):
         pid_list = PersistentIdentifier.query.filter_by(object_type='rec', object_uuid=rec.id)
@@ -120,6 +207,12 @@ class RecordDraftApi:
 
     def published_record_pid_type_for_draft_pid(self, draft_pid):
         return self.draft_pidtype_to_published[draft_pid.pid_type].pid_type
+
+    def draft_record_class_for_published_pid(self, published_pid):
+        return self.published_pidtype_to_draft[published_pid.pid_type].record_class
+
+    def draft_record_pid_type_for_published_pid(self, published_pid):
+        return self.published_pidtype_to_draft[published_pid.pid_type].pid_type
 
     def publish_record_internal(self, draft_record, draft_pid,
                                 published_record_class,
@@ -193,3 +286,68 @@ class RecordDraftApi:
                                published_pid.pid_type)
 
         return published_record, published_pid
+
+    def draft_record_internal(self, published_record, published_pid,
+                              draft_record_class, draft_pid_type):
+        metadata = dict(published_record)
+        # note: the passed record must fill in the schema otherwise the draft will be
+        # without any schema and will not get indexed
+        metadata.pop('$schema', None)
+
+        try:
+            draft_pid = PersistentIdentifier.get(draft_pid_type, published_pid.pid_value)
+
+            if draft_pid.status == PIDStatus.DELETED:
+                # the draft is deleted, resurrect it
+                # change the pid to registered
+                draft_pid.status = PIDStatus.REGISTERED
+                db.session.add(draft_pid)
+
+                # and fetch the draft record and update its metadata
+                return self._update_draft_record(
+                    draft_pid, metadata, None, draft_record_class)
+
+            elif draft_pid.status == PIDStatus.REGISTERED:
+                # fetch the draft record and update its metadata
+                # if it is older than the published one
+                return self._update_draft_record(
+                    draft_pid, metadata,
+                    published_record.updated, draft_record_class)
+
+            raise NotImplementedError('Can not unpublish record to draft record '
+                                      'with pid status %s. Only registered or deleted '
+                                      'statuses are implemented', draft_pid.status)
+        except PIDDoesNotExistError:
+            pass
+
+        # create a new draft record. Do not call minter as the pid value will be the
+        # same as the pid value of the published record
+        id = uuid.uuid4()
+        before_record_unpublished.send(published_record, metadata=metadata)
+        draft_record = draft_record_class.create(metadata, id_=id)
+        draft_pid = PersistentIdentifier.create(pid_type=draft_pid_type,
+                                    pid_value=published_pid.pid_value, status=PIDStatus.REGISTERED,
+                                    object_type='rec', object_uuid=id)
+        return draft_record, draft_pid
+
+    def _update_draft_record(self, draft_pid, metadata,
+                             timestamp, draft_record_class):
+        draft_record = draft_record_class.get_record(draft_pid.object_uuid,
+                                                     with_deleted=True)
+
+        # if deleted, revert to last non-deleted revision
+        revision_id = draft_record.revision_id
+        while draft_record.model.json is None and revision_id > 0:
+            revision_id -= 1
+            draft_record.revert(revision_id)
+
+        if not timestamp or draft_record.updated < timestamp:
+            draft_record.update(metadata)
+            draft_record.commit()
+            if not draft_record['$schema']:  # pragma no cover
+                logger.warning('Updated draft record does not have a $schema metadata. '
+                               'Please use a Record implementation that adds $schema '
+                               '(for example in validate() method). Draft PID Type %s',
+                               draft_pid.pid_type)
+
+        return draft_record, draft_pid
