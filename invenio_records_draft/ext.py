@@ -177,12 +177,6 @@ class InvenioRecordsDraftState(RecordDraftApi):
             self.app.config['INVENIO_RECORD_DRAFT_MAPPINGS_DIR'],
             f'{draft_index}.json')
 
-        self.pid_type_to_record_class[config['draft_pid_type']] = \
-            obj_or_import_string(config['draft_record_class'])
-
-        self.pid_type_to_record_class[config['published_pid_type']] = \
-            obj_or_import_string(config['published_record_class'])
-
         return config
 
     def app_loaded(self, app):
@@ -356,6 +350,13 @@ class InvenioRecordsDraftState(RecordDraftApi):
             published_endpoint_config['endpoint'] = published_endpoint
             self.draft_endpoints[url_prefix] = draft_endpoint_config
             self.published_endpoints[url_prefix] = published_endpoint_config
+
+            self.pid_type_to_record_class[config['draft_pid_type']] = \
+                obj_or_import_string(config['draft_record_class'])
+
+            self.pid_type_to_record_class[config['published_pid_type']] = \
+                obj_or_import_string(config['published_record_class'])
+
 
         state = rest_blueprint.make_setup_state(app, {}, False)
         for deferred in rest_blueprint.deferred_functions[last_deferred_function_index:]:
