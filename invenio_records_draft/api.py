@@ -1,3 +1,4 @@
+import logging
 import uuid
 from collections import namedtuple
 from typing import List, Dict
@@ -6,11 +7,11 @@ from invenio_db import db
 from invenio_indexer.api import RecordIndexer
 from invenio_pidstore.errors import PIDDoesNotExistError
 from invenio_pidstore.models import PersistentIdentifier, PIDStatus
+from invenio_search import current_search_client
 
-from invenio_records_draft.record import InvalidRecordException, DraftEnabledRecordMixin
+from invenio_records_draft.record import InvalidRecordException
 from invenio_records_draft.signals import collect_records, CollectAction, check_can_publish, before_publish, \
     after_publish, before_record_published
-import logging
 
 logger = logging.getLogger('invenio-records-draft.api')
 
@@ -88,6 +89,11 @@ class RecordDraftApi:
             for draft_record, published_record in result:
                 # delete the record
                 draft_record.record.delete()
+                try:
+                    RecordIndexer().delete(draft_record.record, refresh=True)
+                except:
+                    logger.debug('Error deleting record', draft_record.record_pid)
+                RecordIndexer().index(published_record.record)
                 # mark all object pids as deleted
                 all_pids = PersistentIdentifier.query.filter(
                     PersistentIdentifier.object_type == draft_record.record_pid.object_type,
@@ -98,6 +104,8 @@ class RecordDraftApi:
                         rec_pid.delete()
 
                 published_record.record.commit()
+
+        current_search_client.indices.flush()
 
         return result
 
