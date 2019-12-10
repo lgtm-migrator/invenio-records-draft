@@ -13,6 +13,7 @@ from invenio_records_draft.record import InvalidRecordException
 from invenio_records_draft.signals import collect_records, CollectAction, check_can_publish, before_publish, \
     after_publish, before_record_published, check_can_unpublish, before_unpublish, after_unpublish, \
     before_record_unpublished, check_can_edit, before_edit, after_edit, before_publish_record
+from tests.helpers import disable_test_authenticated
 
 logger = logging.getLogger('invenio-records-draft.api')
 
@@ -54,6 +55,10 @@ class RecordDraftApi:
         raise NotImplementedError()
 
     @property
+    def pid_to_prefix_mapping(self):
+        raise NotImplementedError()
+
+    @property
     def published_endpoints(self):
         raise NotImplementedError()
 
@@ -68,7 +73,7 @@ class RecordDraftApi:
             rec = records_to_publish_queue.pop(0)
             for _, collected_records in collect_records.send(record, record=rec, action=action):
                 collect_record: RecordContext
-                for collect_record in collected_records:
+                for collect_record in (collected_records or []):
                     if collect_record.record_uuid in records_to_publish_map:
                         continue
                     records_to_publish_map.add(collect_record.record_uuid)
@@ -83,7 +88,8 @@ class RecordDraftApi:
 
             # for each collected record, check if can be published
             for draft_record in collected_records:
-                check_can_publish.send(record, record=draft_record)
+                with disable_test_authenticated():
+                    check_can_publish.send(record, record=draft_record)
 
             before_publish.send(collected_records)
 
@@ -94,7 +100,7 @@ class RecordDraftApi:
                 published_record_class = self.published_record_class_for_draft_pid(draft_pid)
                 published_record_pid_type = self.published_record_pid_type_for_draft_pid(draft_pid)
                 published_record, published_pid = self.publish_record_internal(
-                    draft_record, published_record_class, published_record_pid_type
+                    draft_record, published_record_class, published_record_pid_type, collect_records
                 )
                 published_record_context = RecordContext(record=published_record, record_pid=published_pid)
                 result.append((draft_record, published_record_context))
@@ -384,9 +390,9 @@ class RecordDraftApi:
 
         return draft_record, draft_pid
 
+    def find_endpoint_by_pid_type(self, pid_type):
+        prefix = self.pid_to_prefix_mapping[pid_type]
+        nt = namedtuple('Endpoints', 'draft_endpoint published_endpoint')
+        return nt(draft_endpoint=self.draft_endpoints[prefix],
+                  published_endpoint=self.published_endpoints[prefix])
 
-def find_endpoint_by_pid_type(endpoints, pid_type):
-    for endpoint in endpoints.values():
-        if endpoint['pid_type'] == pid_type:
-            return endpoint
-    raise KeyError('Endpoint for pid type %s not found' % pid_type)

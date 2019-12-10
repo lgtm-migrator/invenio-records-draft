@@ -12,6 +12,7 @@ from invenio_records_draft.record import (
     InvalidRecordException,
     MarshmallowValidator,
 )
+from tests.helpers import disable_test_authenticated
 
 
 class TestDraftRecord(DraftEnabledRecordMixin, Record):
@@ -51,7 +52,8 @@ def test_publish_record(app, db, schemas):
 
         with pytest.raises(InvalidRecordException):
             # title is required but not in rec, so should fail
-            current_drafts.publish(RecordContext(record=rec, record_pid=draft_pid))
+            with disable_test_authenticated():
+                current_drafts.publish(RecordContext(record=rec, record_pid=draft_pid))
 
         with pytest.raises(PIDDoesNotExistError):
             # no record should be created
@@ -62,7 +64,8 @@ def test_publish_record(app, db, schemas):
         rec.commit()
 
         # and publish it again
-        current_drafts.publish(RecordContext(record=rec, record_pid=draft_pid))
+        with disable_test_authenticated():
+            current_drafts.publish(RecordContext(record=rec, record_pid=draft_pid))
 
         # draft should be gone
         draft_pid = PersistentIdentifier.get(pid_type='drecid', pid_value='1')
@@ -148,7 +151,8 @@ def test_publish_record_with_previous_version(app, db, schemas):
         print(draft_record['invenio_draft_validation'])
 
         # and publish it again
-        current_drafts.publish(RecordContext(record=draft_record, record_pid=draft_pid))
+        with disable_test_authenticated():
+            current_drafts.publish(RecordContext(record=draft_record, record_pid=draft_pid))
 
         # draft should be gone
         draft_pid = PersistentIdentifier.get(pid_type='drecid', pid_value='1')
@@ -267,7 +271,9 @@ def test_unpublish_record(app, db, schemas):
         )
         assert published_record.revision_id == 0
 
-        current_drafts.unpublish(RecordContext(record=published_record, record_pid=published_pid))
+        with disable_test_authenticated():
+            current_drafts.unpublish(RecordContext(record=published_record,
+                                                   record_pid=published_pid))
 
         # published version should be gone
         published_pid = PersistentIdentifier.get(pid_type='recid', pid_value='1')
@@ -309,7 +315,9 @@ def test_unpublish_record_existing_draft(app, db, schemas):
         )
         assert draft_record.revision_id == 0
 
-        current_drafts.unpublish(RecordContext(record=published_record, record_pid=published_pid))
+        with disable_test_authenticated():
+            current_drafts.unpublish(RecordContext(record=published_record,
+                                                   record_pid=published_pid))
 
         # published version should be gone
         published_pid = PersistentIdentifier.get(pid_type='recid', pid_value='1')
@@ -358,8 +366,9 @@ def test_unpublish_record_redirected_draft(app, db, schemas):
 
     with db.session.begin_nested():
         with pytest.raises(NotImplementedError):
-            current_drafts.unpublish(
-                RecordContext(record=published_record, record_pid=published_pid))
+            with disable_test_authenticated():
+                current_drafts.unpublish(
+                    RecordContext(record=published_record, record_pid=published_pid))
 
 
 def test_draft_record(app, db, schemas):
@@ -377,7 +386,8 @@ def test_draft_record(app, db, schemas):
         )
         assert published_record.revision_id == 0
 
-        current_drafts.edit(RecordContext(record=published_record, record_pid=published_pid))
+        with disable_test_authenticated():
+            current_drafts.edit(RecordContext(record=published_record, record_pid=published_pid))
 
         # published version should be there unchanged
         published_pid = PersistentIdentifier.get(pid_type='recid', pid_value='1')
@@ -421,7 +431,8 @@ def test_draft_record_existing_draft(app, db, schemas):
         )
         assert draft_record.revision_id == 0
 
-        current_drafts.edit(RecordContext(record=published_record, record_pid=published_pid))
+        with disable_test_authenticated():
+            current_drafts.edit(RecordContext(record=published_record, record_pid=published_pid))
 
         # published version should be there unchanged
         published_pid = PersistentIdentifier.get(pid_type='recid', pid_value='1')
@@ -471,7 +482,8 @@ def test_draft_record_deleted_draft(app, db, schemas):
         db.session.add(draft_pid)
 
     with db.session.begin_nested():
-        current_drafts.edit(RecordContext(record=published_record, record_pid=published_pid))
+        with disable_test_authenticated():
+            current_drafts.edit(RecordContext(record=published_record, record_pid=published_pid))
 
         # published version should be there unchanged
         published_pid = PersistentIdentifier.get(pid_type='recid', pid_value='1')

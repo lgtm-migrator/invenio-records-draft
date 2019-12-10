@@ -9,12 +9,11 @@
 
 from __future__ import absolute_import, print_function
 
-from flask_login import current_user
 from invenio_jsonschemas import current_jsonschemas
 from invenio_records import Record
-from invenio_records_rest.facets import terms_filter
-
 from invenio_records_draft.record import DraftEnabledRecordMixin, MarshmallowValidator
+from invenio_records_rest.facets import terms_filter
+from .auth import allow_authenticated
 from sample.records.marshmallow import MetadataSchemaV1, RecordSchemaV1
 
 
@@ -23,12 +22,6 @@ def _(x):
     return x
 
 
-def allow_authenticated(*args, **kwargs):
-    """Return permission that always allow an access.
-
-    :returns: A object instance with a ``can()`` method.
-    """
-    return type('Allow', (), {'can': lambda self: current_user.is_authenticated})()
 
 
 class PublishedRecord(DraftEnabledRecordMixin, Record):
