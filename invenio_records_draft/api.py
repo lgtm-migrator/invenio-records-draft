@@ -11,9 +11,8 @@ from invenio_search import current_search_client
 
 from invenio_records_draft.record import InvalidRecordException
 from invenio_records_draft.signals import collect_records, CollectAction, check_can_publish, before_publish, \
-    after_publish, before_record_published, check_can_unpublish, before_unpublish, after_unpublish, \
-    before_record_unpublished, check_can_edit, before_edit, after_edit, before_publish_record
-from tests.helpers import disable_test_authenticated
+    after_publish, check_can_unpublish, before_unpublish, after_unpublish, \
+    check_can_edit, before_edit, after_edit, before_publish_record, before_unpublish_record
 
 logger = logging.getLogger('invenio-records-draft.api')
 
@@ -88,8 +87,7 @@ class RecordDraftApi:
 
             # for each collected record, check if can be published
             for draft_record in collected_records:
-                with disable_test_authenticated():
-                    check_can_publish.send(record, record=draft_record)
+                check_can_publish.send(record, record=draft_record)
 
             before_publish.send(collected_records)
 
@@ -100,7 +98,7 @@ class RecordDraftApi:
                 published_record_class = self.published_record_class_for_draft_pid(draft_pid)
                 published_record_pid_type = self.published_record_pid_type_for_draft_pid(draft_pid)
                 published_record, published_pid = self.publish_record_internal(
-                    draft_record, published_record_class, published_record_pid_type, collect_records
+                    draft_record, published_record_class, published_record_pid_type, collected_records
                 )
                 published_record_context = RecordContext(record=published_record, record_pid=published_pid)
                 result.append((draft_record, published_record_context))
@@ -182,8 +180,9 @@ class RecordDraftApi:
                 draft_record_class = self.draft_record_class_for_published_pid(published_pid)
                 draft_record_pid_type = self.draft_record_pid_type_for_published_pid(published_pid)
                 draft_record, draft_pid = self.draft_record_internal(
-                    published_record.record, published_pid,
-                    draft_record_class, draft_record_pid_type
+                    published_record, published_pid,
+                    draft_record_class, draft_record_pid_type,
+                    collected_records
                 )
                 draft_record_context = RecordContext(record=draft_record, record_pid=draft_pid)
                 result.append((published_record, draft_record_context))
@@ -297,7 +296,6 @@ class RecordDraftApi:
         # create a new draft record. Do not call minter as the pid value will be the
         # same as the pid value of the published record
         id = uuid.uuid4()
-        before_record_published.send(draft_record, metadata=metadata)
         published_record = published_record_class.create(metadata, id_=id)
         published_pid = PersistentIdentifier.create(pid_type=published_pid_type,
                                                     pid_value=draft_pid.pid_value, status=PIDStatus.REGISTERED,
@@ -315,7 +313,6 @@ class RecordDraftApi:
             published_record.revert(revision_id)
 
         if not timestamp or published_record.updated < timestamp:
-            before_record_published.send(published_record, metadata=metadata)
             published_record.update(metadata)
             if not published_record.get('$schema'):  # pragma no cover
                 logger.warning('Updated draft record does not have a $schema metadata. '
@@ -325,12 +322,16 @@ class RecordDraftApi:
 
         return published_record, published_pid
 
-    def draft_record_internal(self, published_record, published_pid,
-                              draft_record_class, draft_pid_type):
-        metadata = dict(published_record)
+    def draft_record_internal(self, published_record_context, published_pid,
+                              draft_record_class, draft_pid_type, collected_records):
+        metadata = dict(published_record_context.record)
         # note: the passed record must fill in the schema otherwise the draft will be
         # without any schema and will not get indexed
         metadata.pop('$schema', None)
+
+        before_unpublish_record.send(published_record_context.record, metadata=metadata,
+                                     record=published_record_context,
+                                     collected_records=collected_records)
 
         try:
             draft_pid = PersistentIdentifier.get(draft_pid_type, published_pid.pid_value)
@@ -350,7 +351,7 @@ class RecordDraftApi:
                 # if it is older than the published one
                 return self._update_draft_record(
                     draft_pid, metadata,
-                    published_record.updated, draft_record_class)
+                    published_record_context.record.updated, draft_record_class)
 
             raise NotImplementedError('Can not unpublish record to draft record '
                                       'with pid status %s. Only registered or deleted '
@@ -361,7 +362,6 @@ class RecordDraftApi:
         # create a new draft record. Do not call minter as the pid value will be the
         # same as the pid value of the published record
         id = uuid.uuid4()
-        before_record_unpublished.send(published_record, metadata=metadata)
         draft_record = draft_record_class.create(metadata, id_=id)
         draft_pid = PersistentIdentifier.create(pid_type=draft_pid_type,
                                                 pid_value=published_pid.pid_value, status=PIDStatus.REGISTERED,
@@ -395,4 +395,3 @@ class RecordDraftApi:
         nt = namedtuple('Endpoints', 'draft_endpoint published_endpoint')
         return nt(draft_endpoint=self.draft_endpoints[prefix],
                   published_endpoint=self.published_endpoints[prefix])
-

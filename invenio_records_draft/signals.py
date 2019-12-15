@@ -44,13 +44,6 @@ A notification called before a record is published
 :param collected_records: All collected records
 """
 
-before_record_published = _signals.signal('before_record_published')
-"""
-A notification called before the records are published
-
-:param metadata: metadata of the record that will be published
-"""
-
 after_publish = _signals.signal('after_publish')
 """
 A notification called after the records have been published
@@ -74,11 +67,13 @@ A notification called before the records are unpublished
 :param records: a list of records to unpublish
 """
 
-before_record_unpublished = _signals.signal('before_record_unpublished')
+before_unpublish_record = _signals.signal('before_publish_record')
 """
-A notification called before the records are unpublished
+A notification called before a record is published
 
-:param metadata: metadata of the record that will be unpublished
+:param metadata: metadata of the published record
+:param record: RecordContext of the draft record 
+:param collected_records: All collected records
 """
 
 after_unpublish = _signals.signal('after_unpublish')
