@@ -24,8 +24,10 @@ from invenio_records_draft.endpoints import (
     pid_getter,
 )
 from invenio_records_draft.proxies import current_drafts
-from invenio_records_draft.signals import collect_records, CollectAction, check_can_publish, check_can_unpublish, \
+from invenio_records_draft.signals import (
+    collect_records, CollectAction, check_can_publish, check_can_unpublish,
     check_can_edit
+)
 from invenio_records_draft.views import (
     EditRecordAction,
     PublishRecordAction,
@@ -521,33 +523,41 @@ def fill_record_urls(sender, record: RecordContext = None, action=None):
     if not getattr(record, 'record_url', None):
         # add the external url of the record
         if action == CollectAction.PUBLISH:
-            endpoint = current_drafts.find_endpoint_by_pid_type(record_pid_type).draft_endpoint
+            endpoint = current_drafts.\
+                find_endpoint_by_pid_type(record_pid_type).draft_endpoint
         else:
-            endpoint = current_drafts.find_endpoint_by_pid_type(record_pid_type).published_endpoint
-            
-        view_name = 'invenio_records_rest.' + RecordResource.view_name.format(endpoint['endpoint'])
+            endpoint = current_drafts.\
+                find_endpoint_by_pid_type(record_pid_type).published_endpoint
+
+        view_name = 'invenio_records_rest.' + \
+                    RecordResource.view_name.format(endpoint['endpoint'])
         record.record_url = url_for(view_name, _external=True,
                                     pid_value=record.record_pid.pid_value)
 
     # add the external published and draft urls of the record
     if action == CollectAction.PUBLISH:
         record.draft_record_url = record.record_url
-        endpoint = current_drafts.find_endpoint_by_pid_type(record_pid_type).published_endpoint
-        view_name = 'invenio_records_rest.' + RecordResource.view_name.format(endpoint['endpoint'])
+        endpoint = current_drafts.\
+            find_endpoint_by_pid_type(record_pid_type).published_endpoint
+        view_name = 'invenio_records_rest.' + \
+                    RecordResource.view_name.format(endpoint['endpoint'])
         record.published_record_url = url_for(view_name, _external=True,
                                               pid_value=record.record_pid.pid_value)
     else:
         record.published_record_url = record.record_url
 
-        endpoint = current_drafts.find_endpoint_by_pid_type(record_pid_type).draft_endpoint
-        view_name = 'invenio_records_rest.' + RecordResource.view_name.format(endpoint['endpoint'])
+        endpoint = current_drafts.\
+            find_endpoint_by_pid_type(record_pid_type).draft_endpoint
+        view_name = 'invenio_records_rest.' + \
+                    RecordResource.view_name.format(endpoint['endpoint'])
         record.draft_record_url = url_for(view_name, _external=True,
                                           pid_value=record.record_pid.pid_value)
 
 
 @check_can_publish.connect
 def check_can_publish_callback(sender, record: RecordContext = None):
-    endpoint = current_drafts.find_endpoint_by_pid_type(record.record_pid.pid_type).draft_endpoint
+    endpoint = current_drafts.\
+        find_endpoint_by_pid_type(record.record_pid.pid_type).draft_endpoint
     permission_factory = endpoint['publish_permission_factory']
     if permission_factory:
         verify_record_permission(permission_factory, record.record)
@@ -555,7 +565,8 @@ def check_can_publish_callback(sender, record: RecordContext = None):
 
 @check_can_unpublish.connect
 def check_can_unpublish_callback(sender, record: RecordContext = None):
-    endpoint = current_drafts.find_endpoint_by_pid_type(record.record_pid.pid_type).published_endpoint
+    endpoint = current_drafts.\
+        find_endpoint_by_pid_type(record.record_pid.pid_type).published_endpoint
     permission_factory = endpoint['unpublish_permission_factory']
     if permission_factory:
         verify_record_permission(permission_factory, record.record)
@@ -563,7 +574,8 @@ def check_can_unpublish_callback(sender, record: RecordContext = None):
 
 @check_can_edit.connect
 def check_can_edit_callback(sender, record: RecordContext = None):
-    endpoint = current_drafts.find_endpoint_by_pid_type(record.record_pid.pid_type).published_endpoint
+    endpoint = current_drafts.\
+        find_endpoint_by_pid_type(record.record_pid.pid_type).published_endpoint
     permission_factory = endpoint['edit_permission_factory']
     if permission_factory:
         verify_record_permission(permission_factory, record.record)

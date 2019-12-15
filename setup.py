@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Setup module for flask taxonomy."""
 import os
+from os import path
 
 from setuptools import setup
 
@@ -43,7 +44,6 @@ with open(os.path.join('invenio_records_draft', 'version.py'), 'rt') as fp:
     exec(fp.read(), g)
     version = g['__version__']
 
-from os import path
 this_directory = path.abspath(path.dirname(__file__))
 with open(path.join(this_directory, 'README.rst'), encoding='utf-8') as f:
     long_description = f.read()

@@ -40,7 +40,7 @@ before_publish_record = _signals.signal('before_publish_record')
 A notification called before a record is published
 
 :param metadata: metadata of the published record
-:param record: RecordContext of the draft record 
+:param record: RecordContext of the draft record
 :param collected_records: All collected records
 """
 
@@ -72,7 +72,7 @@ before_unpublish_record = _signals.signal('before_publish_record')
 A notification called before a record is published
 
 :param metadata: metadata of the published record
-:param record: RecordContext of the draft record 
+:param record: RecordContext of the draft record
 :param collected_records: All collected records
 """
 

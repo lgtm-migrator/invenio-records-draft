@@ -22,8 +22,6 @@ def _(x):
     return x
 
 
-
-
 class PublishedRecord(DraftEnabledRecordMixin, Record):
     def validate(self, **kwargs):
         self['$schema'] = current_jsonschemas.path_to_url('records/record-v1.0.0.json')

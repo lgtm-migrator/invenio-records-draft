@@ -10,9 +10,12 @@ from invenio_pidstore.models import PersistentIdentifier, PIDStatus
 from invenio_search import current_search_client
 
 from invenio_records_draft.record import InvalidRecordException
-from invenio_records_draft.signals import collect_records, CollectAction, check_can_publish, before_publish, \
-    after_publish, check_can_unpublish, before_unpublish, after_unpublish, \
-    check_can_edit, before_edit, after_edit, before_publish_record, before_unpublish_record
+from invenio_records_draft.signals import (
+    collect_records, CollectAction, check_can_publish, before_publish,
+    after_publish, check_can_unpublish, before_unpublish, after_unpublish,
+    check_can_edit, before_edit, after_edit, before_publish_record,
+    before_unpublish_record
+)
 
 logger = logging.getLogger('invenio-records-draft.api')
 
@@ -70,8 +73,10 @@ class RecordDraftApi:
 
         while records_to_publish_queue:
             rec = records_to_publish_queue.pop(0)
-            for _, collected_records in collect_records.send(record, record=rec, action=action):
-                collect_record: RecordContext
+            for _, collected_records in collect_records.send(record,
+                                                             record=rec,
+                                                             action=action):
+                # collect_record: RecordContext
                 for collect_record in (collected_records or []):
                     if collect_record.record_uuid in records_to_publish_map:
                         continue
@@ -95,12 +100,16 @@ class RecordDraftApi:
             # publish in reversed order
             for draft_record in reversed(collected_records):
                 draft_pid = draft_record.record_pid
-                published_record_class = self.published_record_class_for_draft_pid(draft_pid)
-                published_record_pid_type = self.published_record_pid_type_for_draft_pid(draft_pid)
+                published_record_class = \
+                    self.published_record_class_for_draft_pid(draft_pid)
+                published_record_pid_type = \
+                    self.published_record_pid_type_for_draft_pid(draft_pid)
                 published_record, published_pid = self.publish_record_internal(
-                    draft_record, published_record_class, published_record_pid_type, collected_records
+                    draft_record, published_record_class,
+                    published_record_pid_type, collected_records
                 )
-                published_record_context = RecordContext(record=published_record, record_pid=published_pid)
+                published_record_context = RecordContext(record=published_record,
+                                                         record_pid=published_pid)
                 result.append((draft_record, published_record_context))
 
             after_publish.send(result)
@@ -299,7 +308,8 @@ class RecordDraftApi:
         id = uuid.uuid4()
         published_record = published_record_class.create(metadata, id_=id)
         published_pid = PersistentIdentifier.create(pid_type=published_pid_type,
-                                                    pid_value=draft_pid.pid_value, status=PIDStatus.REGISTERED,
+                                                    pid_value=draft_pid.pid_value,
+                                                    status=PIDStatus.REGISTERED,
                                                     object_type='rec', object_uuid=id)
         return published_record, published_pid
 
@@ -365,7 +375,8 @@ class RecordDraftApi:
         id = uuid.uuid4()
         draft_record = draft_record_class.create(metadata, id_=id)
         draft_pid = PersistentIdentifier.create(pid_type=draft_pid_type,
-                                                pid_value=published_pid.pid_value, status=PIDStatus.REGISTERED,
+                                                pid_value=published_pid.pid_value,
+                                                status=PIDStatus.REGISTERED,
                                                 object_type='rec', object_uuid=id)
         return draft_record, draft_pid
 
