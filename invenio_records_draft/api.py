@@ -146,8 +146,9 @@ class RecordDraftApi:
                 draft_record_class = self.draft_record_class_for_published_pid(published_pid)
                 draft_record_pid_type = self.draft_record_pid_type_for_published_pid(published_pid)
                 draft_record, draft_pid = self.draft_record_internal(
-                    published_record.record, published_pid,
-                    draft_record_class, draft_record_pid_type
+                    published_record, published_pid,
+                    draft_record_class, draft_record_pid_type,
+                    collected_records
                 )
                 draft_record_context = RecordContext(record=draft_record, record_pid=draft_pid)
                 result.append((published_record, draft_record_context))
