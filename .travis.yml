@@ -2,10 +2,9 @@ dist: xenial
 
 addons:
   postgresql: 9.6
-  # TODO: Add mysql addon as well
 
 services:
-  - postgresql
+- postgresql
 
 notifications:
   email: false
@@ -18,50 +17,57 @@ matrix:
   fast_finish: true
 
 cache:
-  - pip
+- pip
 
 env:
   global:
-    - POSTGRESQL_SQLALCHEMY_DATABASE_URI="postgresql+psycopg2://postgres@localhost:5432/invenio"
-    - ES6_DOWNLOAD_URL="https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-6.2.0.tar.gz"
-    - ES_HOST=127.0.0.1
+  - POSTGRESQL_SQLALCHEMY_DATABASE_URI="postgresql+psycopg2://postgres@localhost:5432/invenio"
+  - ES6_DOWNLOAD_URL="https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-6.2.0.tar.gz"
+  - ES_HOST=127.0.0.1
   matrix:
-    - REQUIREMENTS=release EXTRAS=all,postgresql,tests SQLALCHEMY_DATABASE_URI=$POSTGRESQL_SQLALCHEMY_DATABASE_URI
-    - REQUIREMENTS=release EXTRAS=all,sqlite,tests
+  - REQUIREMENTS=release EXTRAS=all,postgresql,tests SQLALCHEMY_DATABASE_URI=$POSTGRESQL_SQLALCHEMY_DATABASE_URI
+  - REQUIREMENTS=release EXTRAS=all,sqlite,tests
 
 python:
-  - "3.6"
-  - "3.7"
+- '3.6'
+- '3.7'
 
 before_install:
-  - "travis_retry pip install --upgrade pip setuptools py"
-  - "travis_retry pip install twine wheel coveralls requirements-builder"
-  - "requirements-builder -e $EXTRAS --level=min setup.py > .travis-lowest-requirements.txt"
-  - "requirements-builder -e $EXTRAS --level=pypi setup.py > .travis-release-requirements.txt"
-  - "mkdir /tmp/elasticsearch"
-  - "wget -O - $ES6_DOWNLOAD_URL | tar xz --directory=/tmp/elasticsearch --strip-components=1"
-  - "/tmp/elasticsearch/bin/elasticsearch &"
-  - "sleep 10"
+- travis_retry pip install --upgrade pip setuptools py
+- travis_retry pip install twine wheel coveralls requirements-builder
+- requirements-builder -e $EXTRAS --level=min setup.py > .travis-lowest-requirements.txt
+- requirements-builder -e $EXTRAS --level=pypi setup.py > .travis-release-requirements.txt
+- mkdir /tmp/elasticsearch
+- wget -O - $ES6_DOWNLOAD_URL | tar xz --directory=/tmp/elasticsearch --strip-components=1
+- "/tmp/elasticsearch/bin/elasticsearch &"
+- sleep 10
 
 install:
-  - "travis_retry pip install -r .travis-${REQUIREMENTS}-requirements.txt"
-  - "echo $EXTRAS | tr ',' '\n' | while read; do pip uninstall -y invenio; travis_retry pip install -e .[$REPLY]; done"
-  - "travis_retry pip install --upgrade isort"
+- travis_retry pip install -r .travis-${REQUIREMENTS}-requirements.txt
+- |-
+  echo $EXTRAS | tr ',' '
+  ' | while read; do pip uninstall -y invenio; travis_retry pip install -e .[$REPLY]; done
+- travis_retry pip install --upgrade isort
 
 script:
-  - "./run-tests.sh"
+- "./run-tests.sh"
 
 after_success:
-  - coveralls
+- coveralls
 
-#deploy:
-#  provider: pypi
-#  user: TODO: PYPIUSERNAME
-#  password:
-#    secure: TODO: PYPISECUREHASH
-#  distributions: "compile_catalog sdist bdist_wheel"
-#  on:
-#    tags: true
-#    python: "3.6"
-#    repo: cis/cis-theses-repository
-#    condition: $DEPLOY = true
+# check if release tag is the same as version.py tag
+before_deploy:
+- |-
+  SRCTAG=$(find . -name "version.py" | grep -v 'build' | xargs cat | grep '__version__' | sed 's/__version__//' | sed 's/=//g' | sed 's/"//g' | sed "s/'//g" | sed 's/[ \t\n]//g')
+  test $SRCTAG == $TRAVIS_TAG
+
+deploy:
+  provider: pypi
+  user: "__token__"
+  password:
+    secure: DFy7g4iqPfSnAt70PHBaitWhka2oTQWSFRao8pWVWa6Lf04bQDiV75fgCEGP3696uL2+wpblRRbD6E46sP8UAP67sPzHqVQ07LC+4yinX5ZqGiiX+AwOkwi6WScb+MdBJLwg238kxKzwClUtt1dnos8pzeBxXQP3SAJ3EQH80UA42R8VSymmPHR1eUibQhTtyJxGoD63dmxJ1PYdUqnValnfQ2ez8sELWRtvrZ4+NnG+Y9itKmV6dhYVwM3IrX56uszMVHV4PslxJCALBEo6o/IcNXqY6TLZuVxgGN0b7ciPpatnkAcymv8qod6Kwci+Ib4YGdZwAGt8MsHLT03XS7AVbVFb4qcjQDcPxcICFWIwykBVhC7M/ZfoX06To/MNd7IU0D6mCE/qbHcnAhpHY3E3/brm8nkn3Fs49BgMO6T313WJDlAh36b4v4OtLyDlWAYLNb5AMKVdxsc8FDLzgLjqQjyKbudk/NuwsjGWWtGLG99p2UbVtMxDjAE0+2cntPmDczo8liqJs6kUHtgD1X4nSYZEeyzFdWAu2atmZDAT5Q0uxQhTNP39bTRaArD7fw2pCTUCyJwRFYQ55L5gqmT7H27lrtVR1V+3GJUTOJlqLP2zW3AAKVhEVbZ5RvJZ4hiHYFhR26zbjVFEaAlyFuHgonF3p6wsi1u9aQbOWm4=
+  on:
+    tags: true
+    branch: master
+  distributions: "sdist bdist_wheel"
+  skip_existing: true
