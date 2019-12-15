@@ -1,4 +1,5 @@
 import copy
+import itertools
 import json
 import os
 import pkgutil
@@ -10,15 +11,22 @@ from invenio_base.signals import app_loaded
 from invenio_jsonschemas import current_jsonschemas
 from invenio_records_rest import current_records_rest
 from invenio_records_rest.utils import build_default_endpoint_prefixes, obj_or_import_string
-from invenio_records_rest.views import create_url_rules
+from invenio_records_rest.views import create_url_rules, RecordResource, verify_record_permission
 from invenio_search import current_search
 from invenio_search.utils import schema_to_index
 from jsonref import JsonRef
+from werkzeug.utils import cached_property
 
+from invenio_records_draft.api import RecordDraftApi, RecordType, RecordContext
 from invenio_records_draft.endpoints import (
     create_draft_endpoint,
     create_published_endpoint,
     pid_getter,
+)
+from invenio_records_draft.proxies import current_drafts
+from invenio_records_draft.signals import (
+    collect_records, CollectAction, check_can_publish, check_can_unpublish,
+    check_can_edit
 )
 from invenio_records_draft.views import (
     EditRecordAction,
@@ -37,14 +45,31 @@ def internal_invenio_loader(relative_schema, *args, **kwargs):
     return current_jsonschemas.get_schema(path)
 
 
-class InvenioRecordsDraftState(object):
+class InvenioRecordsDraftState(RecordDraftApi):
 
     def __init__(self, app):
+        super().__init__()
+        self._draft_endpoints = {}
+        self._published_endpoints = {}
         self.app = app
         self.published_schemas = {}
         self.draft_schemas = {}
-        self.draft_endpoints = {}
-        self.published_endpoints = {}
+
+    @property
+    def draft_endpoints(self):
+        return self._draft_endpoints
+
+    @property
+    def published_endpoints(self):
+        return self._published_endpoints
+
+    @cached_property
+    def pid_to_prefix_mapping(self):
+        ret = {}
+        for prefix, endpoint in itertools.chain(self.published_endpoints.items(),
+                                                self.draft_endpoints.items()):
+            ret[endpoint['pid_type']] = prefix
+        return ret
 
     def get_schema(self, schema_path):
         schema_data = current_jsonschemas.get_schema(
@@ -346,8 +371,14 @@ class InvenioRecordsDraftState(object):
             current_records_rest.default_endpoint_prefixes.update(default_prefixes)
             draft_endpoint_config['endpoint'] = draft_endpoint
             published_endpoint_config['endpoint'] = published_endpoint
-            self.draft_endpoints[url_prefix] = draft_endpoint_config
-            self.published_endpoints[url_prefix] = published_endpoint_config
+            self.draft_endpoints[url_prefix] = {
+                **draft_endpoint_config,
+                **permission_factories[url_prefix]
+            }
+            self.published_endpoints[url_prefix] = {
+                **published_endpoint_config,
+                **permission_factories[url_prefix]
+            }
 
         state = rest_blueprint.make_setup_state(app, {}, False)
         for deferred in rest_blueprint.deferred_functions[last_deferred_function_index:]:
@@ -428,6 +459,24 @@ class InvenioRecordsDraftState(object):
 
         app.register_blueprint(blueprint)
 
+    @cached_property
+    def draft_pidtype_to_published(self):
+        return {
+            self.draft_endpoints[end]['pid_type']:
+                RecordType(self.published_endpoints[end]['record_class'],
+                           self.published_endpoints[end]['pid_type'])
+            for end in self.draft_endpoints
+        }
+
+    @cached_property
+    def published_pidtype_to_draft(self):
+        return {
+            self.published_endpoints[end]['pid_type']:
+                RecordType(self.draft_endpoints[end]['record_class'],
+                           self.draft_endpoints[end]['pid_type'])
+            for end in self.published_endpoints
+        }
+
 
 def get_search_index(json_schemas, url_prefix):
     indices = [schema_to_index(x)[0] for x in json_schemas]
@@ -465,3 +514,68 @@ class InvenioRecordsDraft(object):
 
         app.config['INVENIO_RECORD_DRAFT_MAPPINGS_DIR'] = os.path.join(
             app.instance_path, 'draft_mappings')
+
+
+@collect_records.connect
+def fill_record_urls(sender, record: RecordContext = None, action=None):
+    # set the record url if not initially set
+    record_pid_type = record.record_pid.pid_type
+    if not getattr(record, 'record_url', None):
+        # add the external url of the record
+        if action == CollectAction.PUBLISH:
+            endpoint = current_drafts.\
+                find_endpoint_by_pid_type(record_pid_type).draft_endpoint
+        else:
+            endpoint = current_drafts.\
+                find_endpoint_by_pid_type(record_pid_type).published_endpoint
+
+        view_name = 'invenio_records_rest.' + \
+                    RecordResource.view_name.format(endpoint['endpoint'])
+        record.record_url = url_for(view_name, _external=True,
+                                    pid_value=record.record_pid.pid_value)
+
+    # add the external published and draft urls of the record
+    if action == CollectAction.PUBLISH:
+        record.draft_record_url = record.record_url
+        endpoint = current_drafts.\
+            find_endpoint_by_pid_type(record_pid_type).published_endpoint
+        view_name = 'invenio_records_rest.' + \
+                    RecordResource.view_name.format(endpoint['endpoint'])
+        record.published_record_url = url_for(view_name, _external=True,
+                                              pid_value=record.record_pid.pid_value)
+    else:
+        record.published_record_url = record.record_url
+
+        endpoint = current_drafts.\
+            find_endpoint_by_pid_type(record_pid_type).draft_endpoint
+        view_name = 'invenio_records_rest.' + \
+                    RecordResource.view_name.format(endpoint['endpoint'])
+        record.draft_record_url = url_for(view_name, _external=True,
+                                          pid_value=record.record_pid.pid_value)
+
+
+@check_can_publish.connect
+def check_can_publish_callback(sender, record: RecordContext = None):
+    endpoint = current_drafts.\
+        find_endpoint_by_pid_type(record.record_pid.pid_type).draft_endpoint
+    permission_factory = endpoint['publish_permission_factory']
+    if permission_factory:
+        verify_record_permission(permission_factory, record.record)
+
+
+@check_can_unpublish.connect
+def check_can_unpublish_callback(sender, record: RecordContext = None):
+    endpoint = current_drafts.\
+        find_endpoint_by_pid_type(record.record_pid.pid_type).published_endpoint
+    permission_factory = endpoint['unpublish_permission_factory']
+    if permission_factory:
+        verify_record_permission(permission_factory, record.record)
+
+
+@check_can_edit.connect
+def check_can_edit_callback(sender, record: RecordContext = None):
+    endpoint = current_drafts.\
+        find_endpoint_by_pid_type(record.record_pid.pid_type).published_endpoint
+    permission_factory = endpoint['edit_permission_factory']
+    if permission_factory:
+        verify_record_permission(permission_factory, record.record)

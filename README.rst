@@ -507,3 +507,36 @@ REST Endpoints
                 '<invenio_records_draft.endpoints.DraftLinksFactory object>',
         }
     }
+
+Signals
+=======
+
+The following blinker signals are called prior/after to publishing/unpublishing/editing:
+
+``collect_records(source,record,action)``
+
+Called to collect all records that should be published/unpublished/made editable.
+``record`` is an instance of ``RecordContext``, action is a ``CollectAction.PUBLISH``,
+``CollectAction.UNPUBLISH``, ``CollectAction.EDIT``. Returns an iterator of extra
+collected records.
+
+
+``check_can_publish``, ``check_can_unpublish``, ``check_can_edit(source, record)``
+
+Called on each collected record before the action. Can throw an exception to cancel
+the process.
+
+``before_publish``, ``before_unpublish``, ``before_edit(source, records)``
+
+Called on list of ``RecordContext`` instances before the action
+
+``before_publish_record``, ``before_unpublish_record(source, metadata, record, collected_records)``
+
+Called before a single record is published/unpublished. ``record`` is the RecordContext
+being published or unpublished. ``metadata`` are the metadata of the new (published/unpublished)
+record that will be later on created/updated. ``collected_records`` is a list of all records
+collected in the previous phases.
+
+``after_publish``, ``after_unpublish``, ``after_edit(source, records)``
+
+Called after the records have been published/unpublished/made editable.

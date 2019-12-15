@@ -6,6 +6,8 @@ from invenio_records import Record
 from invenio_records_rest.views import need_record_permission, pass_record
 from invenio_search import current_search_client
 
+from invenio_records_draft.api import RecordContext
+from invenio_records_draft.proxies import current_drafts
 from invenio_records_draft.record import DraftEnabledRecordMixin
 
 
@@ -28,13 +30,9 @@ class UnpublishRecordAction(MethodView):
     @need_record_permission('unpublish_permission_factory')
     def post(self, pid, record, **kwargs):
         with db.session.begin_nested():
-            published_record, draft_record = DraftEnabledRecordMixin.unpublish_record(
-                published_record=record, published_pid=pid,
-                draft_pid_type=self.draft_pid_type, draft_record_class=self.draft_record_class)
+            current_drafts.unpublish(RecordContext(record=record, record_pid=pid))
 
-        RecordIndexer().index(draft_record, refresh='true')
-        RecordIndexer().delete(published_record, refresh='true')
-        current_search_client.indices.flush()  # TODO: find out why refresh above is not enough
+        current_search_client.indices.flush()
+
         endpoint = 'invenio_records_rest.{0}_item'.format(self.draft_endpoint_name)
-
         return redirect(url_for(endpoint, pid_value=pid.pid_value, _external=True), code=302)

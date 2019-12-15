@@ -59,7 +59,10 @@ def test_endpoint_config(app, schemas):
         'update_permission_factory_imp': '<function allow_all>',
         'links_factory_imp':
             '<invenio_records_draft.endpoints.DraftLinksFactory object>',
-        'endpoint': 'draft_records'
+        'endpoint': 'draft_records',
+        'publish_permission_factory': '<function allow_authenticated>',
+        'unpublish_permission_factory': '<function allow_authenticated>',
+        'edit_permission_factory': '<function allow_authenticated>',
     }
 
     assert stringify_functions(published_endpoint) == {
@@ -86,7 +89,10 @@ def test_endpoint_config(app, schemas):
         'links_factory_imp':
             '<invenio_records_draft.endpoints.PublishedLinksFactory object>',
         'update_permission_factory_imp': '<function deny_all>',
-        'endpoint': 'published_records'
+        'endpoint': 'published_records',
+        'publish_permission_factory': '<function allow_authenticated>',
+        'unpublish_permission_factory': '<function allow_authenticated>',
+        'edit_permission_factory': '<function allow_authenticated>',
     }
 
 
