@@ -95,7 +95,8 @@ def test_publish_record_marshmallow(app, db, schemas):
 
         with pytest.raises(InvalidRecordException):
             # title is required but not in rec, so should fail
-            current_drafts.publish(RecordContext(record=rec, record_pid=draft_pid))
+            with disable_test_authenticated():
+                current_drafts.publish(RecordContext(record=rec, record_pid=draft_pid))
 
         with pytest.raises(PIDDoesNotExistError):
             # no record should be created
@@ -108,7 +109,8 @@ def test_publish_record_marshmallow(app, db, schemas):
         assert rec['invenio_draft_validation']['valid']
 
         # and publish it again
-        current_drafts.publish(RecordContext(record=rec, record_pid=draft_pid))
+        with disable_test_authenticated():
+            current_drafts.publish(RecordContext(record=rec, record_pid=draft_pid))
 
         # draft should be gone
         draft_pid = PersistentIdentifier.get(pid_type='drecid', pid_value='1')
@@ -202,7 +204,8 @@ def test_publish_deleted_published(app, db, schemas):
     with db.session.begin_nested():
         rec = TestDraftRecord.get_record(draft_uuid)
         draft_pid = PersistentIdentifier.get(pid_type='drecid', pid_value='1')
-        current_drafts.publish(RecordContext(record=rec, record_pid=draft_pid))
+        with disable_test_authenticated():
+            current_drafts.publish(RecordContext(record=rec, record_pid=draft_pid))
 
     with db.session.begin_nested():
         # draft should be gone
@@ -253,7 +256,8 @@ def test_publish_redirected_published(app, db, schemas):
         rec = TestDraftRecord.get_record(draft_uuid)
         draft_pid = PersistentIdentifier.get(pid_type='drecid', pid_value='1')
         with pytest.raises(NotImplementedError):
-            current_drafts.publish(RecordContext(record=rec, record_pid=draft_pid))
+            with disable_test_authenticated():
+                current_drafts.publish(RecordContext(record=rec, record_pid=draft_pid))
 
 
 def test_unpublish_record(app, db, schemas):
