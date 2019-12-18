@@ -32,4 +32,4 @@ def build_index_name(idx):
     if invenio_search_version >= "1.2":
         return invenio_build_index_name(idx)
     else:
-        return invenio_build_index_name(current_app, idx)
+        return prefixed_search_index(idx)
