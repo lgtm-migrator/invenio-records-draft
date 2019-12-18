@@ -23,6 +23,9 @@ tests_require = [
 
 extras_require = {
     'tests': tests_require,
+    'tests-es7': {
+        'oarepo[tests-es7]~={version}'.format(version=OAREPO_VERSION),
+    },
     'devel': tests_require,
     'deploy': deploy_requires,
 }
