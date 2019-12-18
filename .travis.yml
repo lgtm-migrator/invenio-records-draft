@@ -25,10 +25,10 @@ env:
   - ES6_DOWNLOAD_URL="https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-6.2.0.tar.gz"
   - ES_HOST=127.0.0.1
   matrix:
-  - REQUIREMENTS=release EXTRAS=all,postgresql,tests SQLALCHEMY_DATABASE_URI=$POSTGRESQL_SQLALCHEMY_DATABASE_URI
-  - REQUIREMENTS=release EXTRAS=all,sqlite,tests
+#  - REQUIREMENTS=release EXTRAS=all,postgresql,tests SQLALCHEMY_DATABASE_URI=$POSTGRESQL_SQLALCHEMY_DATABASE_URI
+#  - REQUIREMENTS=release EXTRAS=all,sqlite,tests
   - REQUIREMENTS=release EXTRAS=all,postgresql,tests OAREPO_VERSION=3.2.0a9 SQLALCHEMY_DATABASE_URI=$POSTGRESQL_SQLALCHEMY_DATABASE_URI
-  - REQUIREMENTS=release EXTRAS=all,sqlite,tests OAREPO_VERSION=3.2.0a9
+#  - REQUIREMENTS=release EXTRAS=all,sqlite,tests OAREPO_VERSION=3.2.0a9
 
 python:
 - '3.7'
@@ -39,6 +39,7 @@ before_install:
 - "travis_retry pip install twine wheel coveralls requirements-builder pip-tools"
 - "requirements-builder -e $EXTRAS --level=pypi setup.py > .travis-release-requirements.in"
 - "pip-compile -U --verbose -o .travis-release-requirements.txt .travis-release-requirements.in"
+- cat .travis-release-requirements.txt
 - mkdir /tmp/elasticsearch
 - wget -O - $ES6_DOWNLOAD_URL | tar xz --directory=/tmp/elasticsearch --strip-components=1
 - "/tmp/elasticsearch/bin/elasticsearch &"
