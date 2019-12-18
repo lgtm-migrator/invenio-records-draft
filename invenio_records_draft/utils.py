@@ -1,6 +1,9 @@
 from flask import current_app
 from invenio.version import __version__ as __invenio_version__
 
+from invenio_search.utils import build_index_name as invenio_build_index_name
+from invenio_search.version import __version__ as invenio_search_version
+
 try:
     from marshmallow import __version_info__ as marshmallow_version
 except:
@@ -23,3 +26,10 @@ def prefixed_search_index(idx):
     if prefixing_needed:
         return current_app.config.get('SEARCH_INDEX_PREFIX', '') + idx
     return idx
+
+
+def build_index_name(idx):
+    if invenio_search_version >= "1.2":
+        return invenio_build_index_name(idx)
+    else:
+        return invenio_build_index_name(current_app, idx)

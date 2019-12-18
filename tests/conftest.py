@@ -28,14 +28,13 @@ from invenio_records_rest.views import create_blueprint_from_app
 from invenio_rest import InvenioREST
 from invenio_search import InvenioSearch, current_search_client
 from invenio_search.cli import destroy, init
-from invenio_search.utils import build_index_name
 from sqlalchemy_utils import create_database, database_exists
 
 from invenio_records_draft.cli import make_mappings, make_schemas
 from invenio_records_draft.ext import InvenioRecordsDraft
 from sample.records import Records
 
-from invenio_records_draft.utils import prefixed_search_index
+from invenio_records_draft.utils import prefixed_search_index, build_index_name
 from tests.helpers import set_identity
 
 
@@ -225,8 +224,8 @@ def prepare_es(app, db):
     assert result.exit_code == 0
     aliases = current_search_client.indices.get_alias("*")
 
-    assert prefixed_search_index(build_index_name('records-record-v1.0.0')) in aliases
-    assert prefixed_search_index(build_index_name('draft-records-record-v1.0.0')) in aliases
+    assert build_index_name('records-record-v1.0.0') in aliases
+    assert build_index_name('draft-records-record-v1.0.0') in aliases
 
 
 @pytest.fixture()
