@@ -27,10 +27,12 @@ env:
   matrix:
   - REQUIREMENTS=release EXTRAS=all,postgresql,tests SQLALCHEMY_DATABASE_URI=$POSTGRESQL_SQLALCHEMY_DATABASE_URI
   - REQUIREMENTS=release EXTRAS=all,sqlite,tests
+  - REQUIREMENTS=release EXTRAS=all,postgresql,tests OAREPO_VERSION=3.2.0a9 SQLALCHEMY_DATABASE_URI=$POSTGRESQL_SQLALCHEMY_DATABASE_URI
+  - REQUIREMENTS=release EXTRAS=all,sqlite,tests OAREPO_VERSION=3.2.0a9
 
 python:
-- '3.6'
 - '3.7'
+- '3.8'
 
 before_install:
 - travis_retry pip install --upgrade pip setuptools py
