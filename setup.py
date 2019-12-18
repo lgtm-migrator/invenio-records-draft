@@ -18,7 +18,7 @@ deploy_requires = [
 ]
 
 tests_require = [
-    'oarepo[deploy,tests]~={version}'.format(version=OAREPO_VERSION),
+    'oarepo[tests]~={version}'.format(version=OAREPO_VERSION),
 ]
 
 extras_require = {
