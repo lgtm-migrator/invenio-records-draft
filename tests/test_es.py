@@ -1,10 +1,9 @@
 from invenio_search import current_search, current_search_client
 from invenio_search.cli import destroy, init
-from invenio_search.utils import build_index_name
 
 from invenio_records_draft.cli import make_mappings
 from invenio_records_draft.proxies import current_drafts
-from invenio_records_draft.utils import prefixed_search_index
+from invenio_records_draft.utils import prefixed_search_index, build_index_name
 
 
 def test_mapping(app, schemas):
