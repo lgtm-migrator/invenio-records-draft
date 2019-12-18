@@ -80,6 +80,10 @@ def base_app():
     print('records draft registered to app')
     InvenioRecordsDraft(app_)
 
+    # invenio 3.2 sets _current_suffix to random number, so reset it back to empty
+    print("Invenio search current suffix", app_.extensions['invenio-search'].current_suffix,
+          app_.extensions['invenio-search'].mappings, app_.extensions['invenio-search'].aliases)
+
     return app_
 
 
