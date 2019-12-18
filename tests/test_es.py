@@ -1,5 +1,6 @@
 from invenio_search import current_search, current_search_client
 from invenio_search.cli import destroy, init
+from invenio_search.utils import build_index_name
 
 from invenio_records_draft.cli import make_mappings
 from invenio_records_draft.proxies import current_drafts
@@ -38,5 +39,5 @@ def test_publish_mappings(app, mappings):
     assert result.exit_code == 0
     aliases = current_search_client.indices.get_alias("*")
 
-    assert prefixed_search_index('records-record-v1.0.0') in aliases
-    assert prefixed_search_index('draft-records-record-v1.0.0') in aliases
+    assert prefixed_search_index(build_index_name('records-record-v1.0.0')) in aliases
+    assert prefixed_search_index(build_index_name('draft-records-record-v1.0.0')) in aliases
