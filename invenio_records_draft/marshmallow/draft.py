@@ -42,11 +42,11 @@ class DraftField(wrapt.ObjectProxy):
             return True
         return self.__wrapped__.allow_none
 
-    def serialize(self, attr, obj, accessor=None):
-        return self.__wrapped__.__class__.serialize(self, attr, obj, accessor=accessor)
+    def serialize(self, attr, obj, accessor=None, **kwargs):
+        return self.__wrapped__.__class__.serialize(self, attr, obj, accessor=accessor, **kwargs)
 
-    def deserialize(self, value, attr=None, data=None):
-        return self.__wrapped__.__class__.deserialize(self, value, attr=attr, data=data)
+    def deserialize(self, value, attr=None, data=None, **kwargs):
+        return self.__wrapped__.__class__.deserialize(self, value, attr=attr, data=data, **kwargs)
 
     def _validate_missing(self, value):
         return self.__wrapped__.__class__._validate_missing(self, value)

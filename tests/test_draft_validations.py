@@ -16,17 +16,28 @@ def test_draft_validations_title_missing(app, db, schemas, mappings, prepare_es,
     assert resp.status_code == 200
     record = resp.json['hits']['hits'][0]
     print(record)
-    assert record['metadata']['invenio_draft_validation'] == {
-        'valid': False,
-        'errors': {
-            'marshmallow': [
-                {
-                    'field': 'title',
-                    'message': 'Missing data for required field.'
-                }
-            ]
+    assert record['metadata']['invenio_draft_validation'] in (
+        {
+            'valid': False,
+            'errors': {
+                'marshmallow': [
+                    {
+                        'field': 'title',
+                        'message': 'Missing data for required field.'
+                    }
+                ]
+            }
+        },
+        {
+            'valid': False,
+            'errors': {
+                'marshmallow':
+                    {
+                        'title': ['Missing data for required field.']
+                    }
+            }
         }
-    }
+    )
 
 
 def test_draft_validations_title_long(app, db, schemas, mappings, prepare_es,
@@ -44,17 +55,28 @@ def test_draft_validations_title_long(app, db, schemas, mappings, prepare_es,
     assert resp.status_code == 200
     record = resp.json['hits']['hits'][0]
     print(record)
-    assert record['metadata']['invenio_draft_validation'] == {
-        'valid': False,
-        'errors': {
-            'marshmallow': [
-                {
-                    'field': 'title',
-                    'message': 'Length must be between 1 and 10.'
-                }
-            ]
+    assert record['metadata']['invenio_draft_validation'] in (
+        {
+            'valid': False,
+            'errors': {
+                'marshmallow': [
+                    {
+                        'field': 'title',
+                        'message': 'Length must be between 1 and 10.'
+                    }
+                ]
+            }
+        },
+        {
+            'valid': False,
+            'errors': {
+                'marshmallow':
+                    {
+                        'title': ['Length must be between 1 and 10.']
+                    }
+            }
         }
-    }
+    )
 
 
 def test_draft_validations_title_short(app, db, schemas, mappings, prepare_es,
@@ -72,14 +94,24 @@ def test_draft_validations_title_short(app, db, schemas, mappings, prepare_es,
     assert resp.status_code == 200
     record = resp.json['hits']['hits'][0]
     print(record)
-    assert record['metadata']['invenio_draft_validation'] == {
-        'valid': False,
-        'errors': {
-            'jsonschema': [
-                {
-                    'field': 'title',
-                    'message': "'1' is too short"
+    assert record['metadata']['invenio_draft_validation'] in (
+        {
+            'valid': False,
+            'errors': {
+                'jsonschema': [
+                    {
+                        'field': 'title',
+                        'message': "'1' is too short"
+                    }
+                ]
+            }
+        },
+        {
+            'valid': False,
+            'errors': {
+                'jsonschema': {
+                    'title': ["'1' is too short"]
                 }
-            ]
+            }
         }
-    }
+    )

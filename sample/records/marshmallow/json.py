@@ -21,6 +21,7 @@ from invenio_records_draft.marshmallow import (
     DraftEnabledSchema,
     DraftValidationSchemaV1Mixin,
 )
+from invenio_records_draft.utils import load_dump
 
 
 class MetadataSchemaV1(DraftValidationSchemaV1Mixin, DraftEnabledSchema, StrictKeysMixin):
@@ -31,7 +32,7 @@ class MetadataSchemaV1(DraftValidationSchemaV1Mixin, DraftEnabledSchema, StrictK
     keywords = fields.List(SanitizedUnicode(), many=True)
     publication_date = DateString()
     schema = SanitizedUnicode(required=True, attribute='$schema',
-                              load_from='$schema', dump_to='$schema')
+                              **load_dump('$schema'))
 
 
 class RecordSchemaV1(DraftEnabledSchema, StrictKeysMixin):

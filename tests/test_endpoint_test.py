@@ -203,20 +203,34 @@ def test_draft_endpoint_ops(app, db, schemas, mappings, prepare_es,
 
     resp = client.get(record_link)
     assert resp.status_code == 200
-    assert resp.json['metadata'] == {
-        "$schema": "https://localhost:5000/schemas/draft/records/record-v1.0.0.json",
-        "id": "1",
-        'invenio_draft_validation': {
-            'errors': {
-                'marshmallow': [
-                    {'field': 'title',
-                     'message': 'Missing data for required field.'
-                     }
-                ]
-            },
-            'valid': False
-        }
-    }
+    assert resp.json['metadata'] in (
+        {
+            "$schema": "https://localhost:5000/schemas/draft/records/record-v1.0.0.json",
+            "id": "1",
+            'invenio_draft_validation': {
+                'errors': {
+                    'marshmallow': [
+                        {'field': 'title',
+                         'message': 'Missing data for required field.'
+                         }
+                    ]
+                },
+                'valid': False
+            }
+        },
+        {
+            "$schema": "https://localhost:5000/schemas/draft/records/record-v1.0.0.json",
+            "id": "1",
+            'invenio_draft_validation': {
+                'errors': {
+                    'marshmallow': {
+                        'title': ['Missing data for required field.']
+                    }
+                },
+                'valid': False
+            }
+        },
+    )
 
     # try to update the record
     resp = client.put(record_url, json={
@@ -234,10 +248,18 @@ def test_draft_endpoint_ops(app, db, schemas, mappings, prepare_es,
         "$schema": "https://localhost:5000/schemas/draft/records/record-v1.0.0.json",
         'title': 'def', 'invalid': 'blah'})
     assert resp.status_code == 400
-    assert resp.json == {
-        'errors': [{'field': 'invalid', 'message': 'Unknown field name invalid'}],
-        'message': 'Validation error.',
-        'status': 400}
+    assert resp.json in (
+        {
+            'errors': [{'field': 'invalid', 'message': 'Unknown field name invalid'}],
+            'message': 'Validation error.',
+            'status': 400
+        },
+        {
+            'errors': [{'field': 'invalid', 'message': 'Unknown field.', 'parents': []}],
+            'message': 'Validation error.',
+            'status': 400
+        },
+    )
 
     # try to patch the record
     patch_ops = [{'op': 'replace', 'path': '/title', 'value': 'abc'}]

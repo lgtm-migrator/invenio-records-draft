@@ -217,7 +217,10 @@ class InvenioRecordsDraftState(RecordDraftApi):
             draft_mapping_file = config['draft_mapping_file']
 
             if draft_index not in current_search.mappings:
-                current_search.number_of_indexes += 1
+                if hasattr(current_search, 'number_of_indexes'):
+                    # removed in invenio 3.2.0
+                    current_search.number_of_indexes += 1
+
                 current_search.mappings[draft_index] = draft_mapping_file
 
             # create aliases
