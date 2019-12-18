@@ -26,9 +26,9 @@ env:
   - ES_HOST=127.0.0.1
   matrix:
   - REQUIREMENTS=release EXTRAS=all,postgresql,tests SQLALCHEMY_DATABASE_URI=$POSTGRESQL_SQLALCHEMY_DATABASE_URI
-#  - REQUIREMENTS=release EXTRAS=all,sqlite,tests
+  - REQUIREMENTS=release EXTRAS=all,sqlite,tests
   - REQUIREMENTS=release EXTRAS=all,postgresql,tests OAREPO_VERSION=3.2.0a9 SQLALCHEMY_DATABASE_URI=$POSTGRESQL_SQLALCHEMY_DATABASE_URI
-#  - REQUIREMENTS=release EXTRAS=all,sqlite,tests OAREPO_VERSION=3.2.0a9
+  - REQUIREMENTS=release EXTRAS=all,sqlite,tests OAREPO_VERSION=3.2.0a9
 
 python:
 - '3.7'
