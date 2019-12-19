@@ -7,6 +7,8 @@ from invenio_records import Record
 from invenio_records_rest.loaders.marshmallow import MarshmallowErrors
 from invenio_records_rest.utils import obj_or_import_string
 from jsonschema import ValidationError
+from marshmallow import __version_info__ as marshmallow_version
+from marshmallow.exceptions import ValidationError as MarshmallowValidationError
 
 logger = logging.getLogger('invenio-records-draft')
 
@@ -44,10 +46,14 @@ class MarshmallowValidator:
         marshmallow_instance = self.marshmallow_schema_class(context=context)
         result = marshmallow_instance.load(data)
 
-        if result.errors:
-            raise MarshmallowErrors(result.errors)
+        if marshmallow_version[0] < 3:
+            if result.errors:
+                raise MarshmallowErrors(result.errors)
 
-        data = result.data
+            data = result.data
+        else:
+            data = result
+
         data['$schema'] = (
                 current_jsonschemas.path_to_url(self.published_record_schema) or
                 self.published_record_schema
@@ -76,6 +82,13 @@ class DraftEnabledRecordMixin:
                         'marshmallow': e.errors
                     }
                 }
+            except MarshmallowValidationError as e:
+                self['invenio_draft_validation'] = {
+                    'valid': False,
+                    'errors': {
+                        'marshmallow': e.messages
+                    }
+                }
             except ValidationError as e:
                 self['invenio_draft_validation'] = {
                     'valid': False,
@@ -89,6 +102,8 @@ class DraftEnabledRecordMixin:
                     }
                 }
             except Exception as e:
+                import traceback
+                traceback.print_exc()
                 self['invenio_draft_validation'] = {
                     'valid': False,
                     'errors': {

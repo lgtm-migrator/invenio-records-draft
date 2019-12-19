@@ -10,23 +10,35 @@ def test_draft_validations_title_missing(app, db, schemas, mappings, prepare_es,
             '$schema': current_jsonschemas.path_to_url('draft/records/record-v1.0.0.json')
         })
     assert resp.status_code == 201
+    current_search_client.indices.refresh()
     current_search_client.indices.flush()
 
     resp = client.get(draft_records_url)
     assert resp.status_code == 200
     record = resp.json['hits']['hits'][0]
     print(record)
-    assert record['metadata']['invenio_draft_validation'] == {
-        'valid': False,
-        'errors': {
-            'marshmallow': [
-                {
-                    'field': 'title',
-                    'message': 'Missing data for required field.'
-                }
-            ]
+    assert record['metadata']['invenio_draft_validation'] in (
+        {
+            'valid': False,
+            'errors': {
+                'marshmallow': [
+                    {
+                        'field': 'title',
+                        'message': 'Missing data for required field.'
+                    }
+                ]
+            }
+        },
+        {
+            'valid': False,
+            'errors': {
+                'marshmallow':
+                    {
+                        'title': ['Missing data for required field.']
+                    }
+            }
         }
-    }
+    )
 
 
 def test_draft_validations_title_long(app, db, schemas, mappings, prepare_es,
@@ -38,23 +50,35 @@ def test_draft_validations_title_long(app, db, schemas, mappings, prepare_es,
             'title': 'too long title' * 100
         })
     assert resp.status_code == 201
+    current_search_client.indices.refresh()
     current_search_client.indices.flush()
 
     resp = client.get(draft_records_url)
     assert resp.status_code == 200
     record = resp.json['hits']['hits'][0]
     print(record)
-    assert record['metadata']['invenio_draft_validation'] == {
-        'valid': False,
-        'errors': {
-            'marshmallow': [
-                {
-                    'field': 'title',
-                    'message': 'Length must be between 1 and 10.'
-                }
-            ]
+    assert record['metadata']['invenio_draft_validation'] in (
+        {
+            'valid': False,
+            'errors': {
+                'marshmallow': [
+                    {
+                        'field': 'title',
+                        'message': 'Length must be between 1 and 10.'
+                    }
+                ]
+            }
+        },
+        {
+            'valid': False,
+            'errors': {
+                'marshmallow':
+                    {
+                        'title': ['Length must be between 1 and 10.']
+                    }
+            }
         }
-    }
+    )
 
 
 def test_draft_validations_title_short(app, db, schemas, mappings, prepare_es,
@@ -66,20 +90,31 @@ def test_draft_validations_title_short(app, db, schemas, mappings, prepare_es,
             'title': '1'
         })
     assert resp.status_code == 201
+    current_search_client.indices.refresh()
     current_search_client.indices.flush()
 
     resp = client.get(draft_records_url)
     assert resp.status_code == 200
     record = resp.json['hits']['hits'][0]
     print(record)
-    assert record['metadata']['invenio_draft_validation'] == {
-        'valid': False,
-        'errors': {
-            'jsonschema': [
-                {
-                    'field': 'title',
-                    'message': "'1' is too short"
+    assert record['metadata']['invenio_draft_validation'] in (
+        {
+            'valid': False,
+            'errors': {
+                'jsonschema': [
+                    {
+                        'field': 'title',
+                        'message': "'1' is too short"
+                    }
+                ]
+            }
+        },
+        {
+            'valid': False,
+            'errors': {
+                'jsonschema': {
+                    'title': ["'1' is too short"]
                 }
-            ]
+            }
         }
-    }
+    )

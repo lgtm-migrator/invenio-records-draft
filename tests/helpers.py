@@ -6,6 +6,8 @@ from flask import current_app
 from flask_principal import Identity, identity_changed
 from invenio_access import authenticated_user
 from invenio_records_rest.utils import allow_all
+from marshmallow import ValidationError
+from marshmallow import __version_info__ as marshmallow_version
 
 from invenio_records_draft.proxies import current_drafts
 
@@ -52,3 +54,12 @@ def disable_test_authenticated():
             current_drafts.draft_endpoints[prefix] = stored_drafts[prefix]
         for prefix in current_drafts.published_endpoints:
             current_drafts.published_endpoints[prefix] = stored_published[prefix]
+
+
+def marshmallow_load(schema, data):
+    ret = schema.load(data)
+    if marshmallow_version[0] >= 3:
+        return ret
+    if ret[1] != {}:
+        raise ValidationError(message=ret[1])
+    return ret[0]

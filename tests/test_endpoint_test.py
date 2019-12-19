@@ -121,6 +121,7 @@ def test_production_endpoint(app, db, schemas, mappings, prepare_es,
     recid_minter(record_uuid, data)
     rec = Record.create(data, id_=record_uuid)
     RecordIndexer().index(rec)
+    current_search_client.indices.refresh()
     current_search_client.indices.flush()
 
     resp = client.get(published_records_url)
@@ -174,6 +175,7 @@ def test_draft_endpoint_list(app, db, schemas, mappings, prepare_es,
     recid_minter(record_uuid, data)
     rec = Record.create(data, id_=record_uuid)
     RecordIndexer().index(rec)
+    current_search_client.indices.refresh()
     current_search_client.indices.flush()
 
     resp = client.get(draft_records_url)
@@ -192,6 +194,7 @@ def test_draft_endpoint_ops(app, db, schemas, mappings, prepare_es,
         })
     assert resp.status_code == 201
     record_link = resp.json['links']['self']
+    current_search_client.indices.refresh()
     current_search_client.indices.flush()
 
     resp = client.get(draft_records_url)
@@ -203,26 +206,41 @@ def test_draft_endpoint_ops(app, db, schemas, mappings, prepare_es,
 
     resp = client.get(record_link)
     assert resp.status_code == 200
-    assert resp.json['metadata'] == {
-        "$schema": "https://localhost:5000/schemas/draft/records/record-v1.0.0.json",
-        "id": "1",
-        'invenio_draft_validation': {
-            'errors': {
-                'marshmallow': [
-                    {'field': 'title',
-                     'message': 'Missing data for required field.'
-                     }
-                ]
-            },
-            'valid': False
-        }
-    }
+    assert resp.json['metadata'] in (
+        {
+            "$schema": "https://localhost:5000/schemas/draft/records/record-v1.0.0.json",
+            "id": "1",
+            'invenio_draft_validation': {
+                'errors': {
+                    'marshmallow': [
+                        {'field': 'title',
+                         'message': 'Missing data for required field.'
+                         }
+                    ]
+                },
+                'valid': False
+            }
+        },
+        {
+            "$schema": "https://localhost:5000/schemas/draft/records/record-v1.0.0.json",
+            "id": "1",
+            'invenio_draft_validation': {
+                'errors': {
+                    'marshmallow': {
+                        'title': ['Missing data for required field.']
+                    }
+                },
+                'valid': False
+            }
+        },
+    )
 
     # try to update the record
     resp = client.put(record_url, json={
         "$schema": "https://localhost:5000/schemas/draft/records/record-v1.0.0.json",
         'title': 'def'})
     assert resp.status_code == 200
+    current_search_client.indices.refresh()
     current_search_client.indices.flush()
 
     resp = client.get(record_url)
@@ -234,10 +252,18 @@ def test_draft_endpoint_ops(app, db, schemas, mappings, prepare_es,
         "$schema": "https://localhost:5000/schemas/draft/records/record-v1.0.0.json",
         'title': 'def', 'invalid': 'blah'})
     assert resp.status_code == 400
-    assert resp.json == {
-        'errors': [{'field': 'invalid', 'message': 'Unknown field name invalid'}],
-        'message': 'Validation error.',
-        'status': 400}
+    assert resp.json in (
+        {
+            'errors': [{'field': 'invalid', 'message': 'Unknown field name invalid'}],
+            'message': 'Validation error.',
+            'status': 400
+        },
+        {
+            'errors': [{'field': 'invalid', 'message': 'Unknown field.', 'parents': []}],
+            'message': 'Validation error.',
+            'status': 400
+        },
+    )
 
     # try to patch the record
     patch_ops = [{'op': 'replace', 'path': '/title', 'value': 'abc'}]
@@ -245,6 +271,7 @@ def test_draft_endpoint_ops(app, db, schemas, mappings, prepare_es,
         'Content-Type': 'application/json-patch+json'
     })
     assert resp.status_code == 200
+    current_search_client.indices.refresh()
     current_search_client.indices.flush()
 
     resp = client.get(record_url)
@@ -266,6 +293,7 @@ def test_draft_endpoint_ops(app, db, schemas, mappings, prepare_es,
     # deleting the record should pass as the default permission is allow_all
     resp = client.delete(record_url)
     assert resp.status_code == 204
+    current_search_client.indices.refresh()
     current_search_client.indices.flush()
 
     resp = client.get(record_url)

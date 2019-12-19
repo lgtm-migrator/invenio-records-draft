@@ -1,0 +1,50 @@
+{
+  "invenio_draft_validation": {
+    "type": "object",
+    "properties": {
+      "valid": {
+        "type": "boolean"
+      },
+      "errors": {
+        "type": "object",
+        "properties": {
+          "marshmallow": {
+            "type": "object",
+            "properties": {
+              "field": {
+                "type": "keyword"
+              },
+              "message": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword"
+                  }
+                }
+              }
+            }
+          },
+          "jsonschema": {
+            "type": "object",
+            "properties": {
+              "field": {
+                "type": "keyword"
+              },
+              "message": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword"
+                  }
+                }
+              }
+            }
+          },
+          "other": {
+            "type": "text"
+          }
+        }
+      }
+    }
+  }
+}

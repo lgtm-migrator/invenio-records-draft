@@ -28,6 +28,7 @@ class PublishRecordAction(MethodView):
     @need_record_permission('publish_permission_factory')
     def post(self, pid, record, **kwargs):
         current_drafts.publish(RecordContext(record=record, record_pid=pid))
+        current_search_client.indices.refresh()
         current_search_client.indices.flush()
         endpoint = 'invenio_records_rest.{0}_item'.format(self.published_endpoint_name)
         return redirect(url_for(endpoint, pid_value=pid.pid_value, _external=True), code=302)

@@ -32,6 +32,7 @@ class UnpublishRecordAction(MethodView):
         with db.session.begin_nested():
             current_drafts.unpublish(RecordContext(record=record, record_pid=pid))
 
+        current_search_client.indices.refresh()
         current_search_client.indices.flush()
 
         endpoint = 'invenio_records_rest.{0}_item'.format(self.draft_endpoint_name)

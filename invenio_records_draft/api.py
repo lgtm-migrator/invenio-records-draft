@@ -1,7 +1,7 @@
 import logging
 import uuid
 from collections import namedtuple
-from typing import List, Dict
+from typing import Dict, List
 
 from invenio_db import db
 from invenio_indexer.api import RecordIndexer
@@ -11,10 +11,19 @@ from invenio_search import current_search_client
 
 from invenio_records_draft.record import InvalidRecordException
 from invenio_records_draft.signals import (
-    collect_records, CollectAction, check_can_publish, before_publish,
-    after_publish, check_can_unpublish, before_unpublish, after_unpublish,
-    check_can_edit, before_edit, after_edit, before_publish_record,
-    before_unpublish_record
+    CollectAction,
+    after_edit,
+    after_publish,
+    after_unpublish,
+    before_edit,
+    before_publish,
+    before_publish_record,
+    before_unpublish,
+    before_unpublish_record,
+    check_can_edit,
+    check_can_publish,
+    check_can_unpublish,
+    collect_records,
 )
 
 logger = logging.getLogger('invenio-records-draft.api')
@@ -133,6 +142,7 @@ class RecordDraftApi:
 
                 published_record.record.commit()
 
+        current_search_client.indices.refresh()
         current_search_client.indices.flush()
 
         return result
@@ -168,6 +178,7 @@ class RecordDraftApi:
                 draft_record.record.commit()
                 RecordIndexer().index(draft_record.record)
 
+        current_search_client.indices.refresh()
         current_search_client.indices.flush()
 
         return result
@@ -217,6 +228,7 @@ class RecordDraftApi:
                     if not rec_pid.is_deleted():
                         rec_pid.delete()
 
+        current_search_client.indices.refresh()
         current_search_client.indices.flush()
 
         return result

@@ -13,6 +13,7 @@ from invenio_records_draft.marshmallow import (
     draft_allowed,
     published_only,
 )
+from tests.helpers import marshmallow_load
 
 
 def test_draft_field_required():
@@ -113,12 +114,14 @@ def test_load():
         fld = Integer(required=True)
 
     schema = TestSchema()
-    assert schema.load({'fld': 1}) == ({'fld': 1}, {})
+    assert marshmallow_load(schema, {'fld': 1}) == {'fld': 1}
 
-    assert schema.load({'fld': None}) == ({}, {'fld': ['Field may not be null.']})
+    with pytest.raises(ValidationError) as exc:
+        marshmallow_load(schema, {'fld': None})
+    assert exc.value.args[0] == {'fld': ['Field may not be null.']}
 
     schema = DraftSchemaWrapper(TestSchema)()
-    assert schema.load({'fld': None}) == ({'fld': None}, {})
+    assert marshmallow_load(schema, {'fld': None}) == {'fld': None}
 
 
 def test_load_nested():
@@ -133,18 +136,23 @@ def test_load_nested():
 
     schema = TestSchema()
     schema2 = TestSchema2()
-    assert schema.load({'nest': {'fld': 1}}) == ({'nest': {'fld': 1}}, {})
-    assert schema2.load({'nest': {'fld': 1}}) == ({'nest': {'fld': 1}}, {})
+    assert marshmallow_load(schema, {'nest': {'fld': 1}}) == {'nest': {'fld': 1}}
+    assert marshmallow_load(schema2, {'nest': {'fld': 1}}) == {'nest': {'fld': 1}}
 
-    err = ({}, {'nest': {'fld': ['Field may not be null.']}})
-    assert schema.load({'nest': {'fld': None}}) == err
-    assert schema2.load({'nest': {'fld': None}}) == err
+    err = {'nest': {'fld': ['Field may not be null.']}}
+
+    with pytest.raises(ValidationError) as exc:
+        assert marshmallow_load(schema, {'nest': {'fld': None}}) == err
+    assert exc.value.args[0] == err
+    with pytest.raises(ValidationError) as exc:
+        assert marshmallow_load(schema2, {'nest': {'fld': None}}) == err
+    assert exc.value.args[0] == err
 
     schema = DraftSchemaWrapper(TestSchema)()
-    assert schema.load({'nest': {'fld': None}}) == ({'nest': {'fld': None}}, {})
+    assert marshmallow_load(schema, {'nest': {'fld': None}}) == {'nest': {'fld': None}}
 
     schema2 = DraftSchemaWrapper(TestSchema)()
-    assert schema2.load({'nest': {'fld': None}}) == ({'nest': {'fld': None}}, {})
+    assert marshmallow_load(schema2, {'nest': {'fld': None}}) == {'nest': {'fld': None}}
 
 
 def test_validators():
@@ -152,15 +160,19 @@ def test_validators():
         fld = Integer(required=True, validate=[lambda x: x > 1])
 
     schema = TestSchema()
-    assert schema.load({'fld': 10}) == ({'fld': 10}, {})
-    assert schema.load({'fld': 1}) == ({}, {'fld': ['Invalid value.']})
+    assert marshmallow_load(schema, {'fld': 10}) == {'fld': 10}
+    with pytest.raises(ValidationError) as exc:
+        marshmallow_load(schema, {'fld': 1})
+    assert exc.value.args[0] == {'fld': ['Invalid value.']}
 
-    assert schema.load({'fld': None}) == ({}, {'fld': ['Field may not be null.']})
+    with pytest.raises(ValidationError) as exc:
+        marshmallow_load(schema, {'fld': None})
+    assert exc.value.args[0] == {'fld': ['Field may not be null.']}
 
     schema = DraftSchemaWrapper(TestSchema)()
-    assert schema.load({'fld': 10}) == ({'fld': 10}, {})
-    assert schema.load({'fld': 1}) == ({'fld': 1}, {})
-    assert schema.load({'fld': None}) == ({'fld': None}, {})
+    assert marshmallow_load(schema, {'fld': 10}) == {'fld': 10}
+    assert marshmallow_load(schema, {'fld': 1}) == {'fld': 1}
+    assert marshmallow_load(schema, {'fld': None}) == {'fld': None}
 
 
 def test_validators_allowed():
@@ -168,12 +180,21 @@ def test_validators_allowed():
         fld = Integer(required=True, validate=[draft_allowed(lambda x: x > 1)])
 
     schema = TestSchema()
-    assert schema.load({'fld': 10}) == ({'fld': 10}, {})
-    assert schema.load({'fld': 1}) == ({}, {'fld': ['Invalid value.']})
+    assert marshmallow_load(schema, {'fld': 10}) == {'fld': 10}
 
-    assert schema.load({'fld': None}) == ({}, {'fld': ['Field may not be null.']})
+    with pytest.raises(ValidationError) as exc:
+        marshmallow_load(schema, {'fld': 1})
+    assert exc.value.args[0] == {'fld': ['Invalid value.']}
+
+    with pytest.raises(ValidationError) as exc:
+        marshmallow_load(schema, {'fld': None})
+    assert exc.value.args[0] == {'fld': ['Field may not be null.']}
 
     schema = DraftSchemaWrapper(TestSchema)()
-    assert schema.load({'fld': 10}) == ({'fld': 10}, {})
-    assert schema.load({'fld': 1}) == ({}, {'fld': ['Invalid value.']})
-    assert schema.load({'fld': None}) == ({'fld': None}, {})
+    assert marshmallow_load(schema, {'fld': 10}) == {'fld': 10}
+
+    with pytest.raises(ValidationError) as exc:
+        marshmallow_load(schema, {'fld': 1})
+    assert exc.value.args[0] == {'fld': ['Invalid value.']}
+
+    assert marshmallow_load(schema, {'fld': None}) == {'fld': None}

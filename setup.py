@@ -7,32 +7,27 @@ from setuptools import setup
 
 readme = open('README.rst').read()
 
-INVENIO_VERSION = "3.1.1"
+OAREPO_VERSION = os.environ.get('OAREPO_VERSION', '3.1.1')
 
 install_requires = [
     'wrapt>=1.11.2'
 ]
 
 deploy_requires = [
-    'invenio[base,metadata,elasticsearch6,postgresql,auth]' +
-    '=={version}'.format(version=INVENIO_VERSION),
+    'oarepo[deploy]~={version}'.format(version=OAREPO_VERSION),
 ]
 
 tests_require = [
-    'invenio[base,metadata,elasticsearch6,tests,auth]' +
-    '=={version}'.format(version=INVENIO_VERSION),
+    'oarepo[tests]~={version}'.format(version=OAREPO_VERSION),
 ]
 
 extras_require = {
     'tests': tests_require,
+    'tests-es7': {
+        'oarepo[tests-es7]~={version}'.format(version=OAREPO_VERSION),
+    },
     'devel': tests_require,
     'deploy': deploy_requires,
-    'postgresql': [
-        'invenio[postgresql]=={version}'.format(version=INVENIO_VERSION),
-    ],
-    'sqlite': [
-        'invenio[sqlite]=={version}'.format(version=INVENIO_VERSION),
-    ]
 }
 
 setup_requires = [
