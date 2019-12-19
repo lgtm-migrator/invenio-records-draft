@@ -49,10 +49,7 @@ before_install:
 
 install:
 - travis_retry pip install -r .travis-${REQUIREMENTS}-requirements.txt
-- |-
-  echo $EXTRAS | tr ',' '
-  ' | while read; do pip uninstall -y invenio; travis_retry pip install -e .[$REPLY]; done
-- travis_retry pip install --upgrade isort
+- travis_retry pip install -e .[$EXTRAS]
 
 script:
 - "./run-tests.sh"
