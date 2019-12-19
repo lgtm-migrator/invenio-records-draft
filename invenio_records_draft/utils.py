@@ -1,6 +1,5 @@
 from flask import current_app
 from invenio.version import __version__ as __invenio_version__
-
 from invenio_search.utils import build_index_name as invenio_build_index_name
 from invenio_search.version import __version__ as invenio_search_version
 

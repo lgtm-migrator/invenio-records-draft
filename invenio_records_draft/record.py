@@ -5,10 +5,10 @@ from invenio_pidstore.fetchers import FetchedPID
 from invenio_pidstore.models import PersistentIdentifier
 from invenio_records import Record
 from invenio_records_rest.loaders.marshmallow import MarshmallowErrors
-from marshmallow.exceptions import ValidationError as MarshmallowValidationError
 from invenio_records_rest.utils import obj_or_import_string
 from jsonschema import ValidationError
 from marshmallow import __version_info__ as marshmallow_version
+from marshmallow.exceptions import ValidationError as MarshmallowValidationError
 
 logger = logging.getLogger('invenio-records-draft')
 

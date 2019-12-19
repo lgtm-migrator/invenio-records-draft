@@ -10,14 +10,21 @@ from flask import Blueprint, current_app, url_for
 from invenio_base.signals import app_loaded
 from invenio_jsonschemas import current_jsonschemas
 from invenio_records_rest import current_records_rest
-from invenio_records_rest.utils import build_default_endpoint_prefixes, obj_or_import_string
-from invenio_records_rest.views import create_url_rules, RecordResource, verify_record_permission
+from invenio_records_rest.utils import (
+    build_default_endpoint_prefixes,
+    obj_or_import_string,
+)
+from invenio_records_rest.views import (
+    RecordResource,
+    create_url_rules,
+    verify_record_permission,
+)
 from invenio_search import current_search
 from invenio_search.utils import schema_to_index
 from jsonref import JsonRef
 from werkzeug.utils import cached_property
 
-from invenio_records_draft.api import RecordDraftApi, RecordType, RecordContext
+from invenio_records_draft.api import RecordContext, RecordDraftApi, RecordType
 from invenio_records_draft.endpoints import (
     create_draft_endpoint,
     create_published_endpoint,
@@ -25,8 +32,11 @@ from invenio_records_draft.endpoints import (
 )
 from invenio_records_draft.proxies import current_drafts
 from invenio_records_draft.signals import (
-    collect_records, CollectAction, check_can_publish, check_can_unpublish,
-    check_can_edit
+    CollectAction,
+    check_can_edit,
+    check_can_publish,
+    check_can_unpublish,
+    collect_records,
 )
 from invenio_records_draft.views import (
     EditRecordAction,
@@ -144,7 +154,11 @@ class InvenioRecordsDraftState(RecordDraftApi):
             pkgutil.get_data('invenio_records_draft',
                              f'/mappings/v{ES_VERSION[0]}/draft.json'))
 
-        first_mapping = list(mapping_data['mappings'].values())[0]
+        if 'properties' in mapping_data['mappings']:
+            first_mapping = mapping_data['mappings']
+        else:
+            first_mapping = list(mapping_data['mappings'].values())[0]
+
         first_mapping['properties'].update(draft_mapping)
 
         with open(target_mapping, 'w') as f:

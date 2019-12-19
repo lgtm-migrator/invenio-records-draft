@@ -7,9 +7,9 @@ from flask_principal import Identity, identity_changed
 from invenio_access import authenticated_user
 from invenio_records_rest.utils import allow_all
 from marshmallow import ValidationError
+from marshmallow import __version_info__ as marshmallow_version
 
 from invenio_records_draft.proxies import current_drafts
-from marshmallow import __version_info__ as marshmallow_version
 
 
 def header_links(resp):

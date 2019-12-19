@@ -10,6 +10,7 @@ def test_draft_validations_title_missing(app, db, schemas, mappings, prepare_es,
             '$schema': current_jsonschemas.path_to_url('draft/records/record-v1.0.0.json')
         })
     assert resp.status_code == 201
+    current_search_client.indices.refresh()
     current_search_client.indices.flush()
 
     resp = client.get(draft_records_url)
@@ -49,6 +50,7 @@ def test_draft_validations_title_long(app, db, schemas, mappings, prepare_es,
             'title': 'too long title' * 100
         })
     assert resp.status_code == 201
+    current_search_client.indices.refresh()
     current_search_client.indices.flush()
 
     resp = client.get(draft_records_url)
@@ -88,6 +90,7 @@ def test_draft_validations_title_short(app, db, schemas, mappings, prepare_es,
             'title': '1'
         })
     assert resp.status_code == 201
+    current_search_client.indices.refresh()
     current_search_client.indices.flush()
 
     resp = client.get(draft_records_url)

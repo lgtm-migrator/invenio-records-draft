@@ -121,6 +121,7 @@ def test_production_endpoint(app, db, schemas, mappings, prepare_es,
     recid_minter(record_uuid, data)
     rec = Record.create(data, id_=record_uuid)
     RecordIndexer().index(rec)
+    current_search_client.indices.refresh()
     current_search_client.indices.flush()
 
     resp = client.get(published_records_url)
@@ -174,6 +175,7 @@ def test_draft_endpoint_list(app, db, schemas, mappings, prepare_es,
     recid_minter(record_uuid, data)
     rec = Record.create(data, id_=record_uuid)
     RecordIndexer().index(rec)
+    current_search_client.indices.refresh()
     current_search_client.indices.flush()
 
     resp = client.get(draft_records_url)
@@ -192,6 +194,7 @@ def test_draft_endpoint_ops(app, db, schemas, mappings, prepare_es,
         })
     assert resp.status_code == 201
     record_link = resp.json['links']['self']
+    current_search_client.indices.refresh()
     current_search_client.indices.flush()
 
     resp = client.get(draft_records_url)
@@ -237,6 +240,7 @@ def test_draft_endpoint_ops(app, db, schemas, mappings, prepare_es,
         "$schema": "https://localhost:5000/schemas/draft/records/record-v1.0.0.json",
         'title': 'def'})
     assert resp.status_code == 200
+    current_search_client.indices.refresh()
     current_search_client.indices.flush()
 
     resp = client.get(record_url)
@@ -267,6 +271,7 @@ def test_draft_endpoint_ops(app, db, schemas, mappings, prepare_es,
         'Content-Type': 'application/json-patch+json'
     })
     assert resp.status_code == 200
+    current_search_client.indices.refresh()
     current_search_client.indices.flush()
 
     resp = client.get(record_url)
@@ -288,6 +293,7 @@ def test_draft_endpoint_ops(app, db, schemas, mappings, prepare_es,
     # deleting the record should pass as the default permission is allow_all
     resp = client.delete(record_url)
     assert resp.status_code == 204
+    current_search_client.indices.refresh()
     current_search_client.indices.flush()
 
     resp = client.get(record_url)

@@ -11,10 +11,12 @@ from __future__ import absolute_import, print_function
 
 from invenio_jsonschemas import current_jsonschemas
 from invenio_records import Record
-from invenio_records_draft.record import DraftEnabledRecordMixin, MarshmallowValidator
 from invenio_records_rest.facets import terms_filter
-from .auth import allow_authenticated
+
+from invenio_records_draft.record import DraftEnabledRecordMixin, MarshmallowValidator
 from sample.records.marshmallow import MetadataSchemaV1, RecordSchemaV1
+
+from .auth import allow_authenticated
 
 
 def _(x):

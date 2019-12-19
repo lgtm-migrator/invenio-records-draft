@@ -32,9 +32,8 @@ from sqlalchemy_utils import create_database, database_exists
 
 from invenio_records_draft.cli import make_mappings, make_schemas
 from invenio_records_draft.ext import InvenioRecordsDraft
+from invenio_records_draft.utils import build_index_name, prefixed_search_index
 from sample.records import Records
-
-from invenio_records_draft.utils import prefixed_search_index, build_index_name
 from tests.helpers import set_identity
 
 
@@ -70,7 +69,8 @@ def base_app():
         SECRET_KEY='TEST_SECRET_KEY',
         INVENIO_INSTANCE_PATH=instance_path,
         SEARCH_INDEX_PREFIX='test-',
-        JSONSCHEMAS_HOST='localhost:5000'
+        JSONSCHEMAS_HOST='localhost:5000',
+        SEARCH_ELASTIC_HOSTS=os.environ.get('SEARCH_ELASTIC_HOSTS', None)
     )
     app.test_client_class = JsonClient
 
@@ -150,6 +150,8 @@ def db(app):
 def schemas(app):
     runner = app.test_cli_runner()
     result = runner.invoke(make_schemas)
+    if result.exit_code:
+        print(result.output, file=sys.stderr)
     assert result.exit_code == 0
 
     # trigger registration of new schemas, normally performed
@@ -168,6 +170,8 @@ def schemas(app):
 def mappings(app, schemas):
     runner = app.test_cli_runner()
     result = runner.invoke(make_mappings)
+    if result.exit_code:
+        print(result.output, file=sys.stderr)
     assert result.exit_code == 0
 
     # trigger registration of new schemas, normally performed
@@ -216,11 +220,11 @@ def prepare_es(app, db):
     runner = app.test_cli_runner()
     result = runner.invoke(destroy, ['--yes-i-know', '--force'])
     if result.exit_code:
-        print(result.output)
+        print(result.output, file=sys.stderr)
     assert result.exit_code == 0
     result = runner.invoke(init)
     if result.exit_code:
-        print(result.output)
+        print(result.output, file=sys.stderr)
     assert result.exit_code == 0
     aliases = current_search_client.indices.get_alias("*")
 
@@ -239,6 +243,7 @@ def published_record(app, db, schemas, mappings, prepare_es):
     recid_minter(record_uuid, data)
     rec = Record.create(data, id_=record_uuid)
     RecordIndexer().index(rec)
+    current_search_client.indices.refresh()
     current_search_client.indices.flush()
 
     return rec
@@ -260,6 +265,7 @@ def draft_record(app, db, schemas, mappings, prepare_es):
     rec = Record.create(data, id_=draft_uuid)
 
     RecordIndexer().index(rec)
+    current_search_client.indices.refresh()
     current_search_client.indices.flush()
 
     return rec
