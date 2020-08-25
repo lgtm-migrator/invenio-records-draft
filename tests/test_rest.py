@@ -1,7 +1,7 @@
 import json
 
 
-def test_draft_create(app, db, client):
+def test_draft_create(app, db, client, prepare_es):
     resp = client.post('/drafts/records/', data=json.dumps({'title': 'test'}), content_type='application/json')
 
     assert resp.status_code == 201
@@ -18,11 +18,10 @@ def test_draft_create(app, db, client):
             "control_number": "1",
             "invenio_draft_validation": {
                 "errors": {
-                    "marshmallow": {
-                        "title": [
-                            "Shorter than minimum length 5."
-                        ]
-                    }
+                    "marshmallow": [{
+                        "field": "title",
+                        "message": "Shorter than minimum length 5."
+                    }]
                 },
                 "valid": False
             },

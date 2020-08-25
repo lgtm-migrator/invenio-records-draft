@@ -61,11 +61,35 @@ draft_validation_json = {
                 "properties": {
                     "marshmallow": {
                         "type": "object",
-                        "dynamic": True
+                        "properties": {
+                            "field": {
+                                "type": "keyword"
+                            },
+                            "message": {
+                                "type": "text",
+                                "fields": {
+                                    "keyword": {
+                                        "type": "keyword"
+                                    }
+                                }
+                            }
+                        }
                     },
                     "jsonschema": {
                         "type": "object",
-                        "dynamic": True
+                        "properties": {
+                            "field": {
+                                "type": "keyword"
+                            },
+                            "message": {
+                                "type": "text",
+                                "fields": {
+                                    "keyword": {
+                                        "type": "keyword"
+                                    }
+                                }
+                            }
+                        }
                     },
                     "other": {
                         "type": "text"

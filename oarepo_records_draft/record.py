@@ -25,12 +25,12 @@ class DraftRecordMixin:
             self.save_generic_error(e)
 
     def save_marshmallow_error(self, err: MarshmallowErrors):
-        errors = {}
+        errors = []
         for e in err.errors:
             if e['parents']:
-                errors.setdefault('.'.join(e['parents']) + '.' + e['field'], []).append(e['message'])
+                errors.append({'field': '.'.join(e['parents']) + '.' + e['field'], 'message': e['message']})
             else:
-                errors.setdefault(e['field'], []).append(e['message'])
+                errors.append({'field': e['field'], 'message': e['message']})
 
         self['invenio_draft_validation'] = {
             'valid': False,
@@ -43,11 +43,10 @@ class DraftRecordMixin:
         self['invenio_draft_validation'] = {
             'valid': False,
             'errors': {
-                'jsonschema': {
-                    '.'.join(err.path): [
-                        err.message
-                    ]
-                }
+                'jsonschema': [{
+                    'field': '.'.join(err.path),
+                    'message': err.message
+                }]
             }
         }
 
