@@ -149,3 +149,5 @@ OAISERVER_ID_PREFIX = 'oai:my-site.com:'
 
 #: Switches off incept of redirects by Flask-DebugToolbar.
 DEBUG_TB_INTERCEPT_REDIRECTS = False
+
+RECORDS_REST_ENDPOINTS = {}
