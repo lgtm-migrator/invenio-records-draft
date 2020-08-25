@@ -19,7 +19,6 @@ def process(mappings, aliases, base_dir, mapping, draft_mapping):
         raise ValueError('No mappings found in %s' % mappings[mapping])
 
     mapping_data['mappings']['dynamic'] = False  # disable dynamic fields
-    mapping_data['mappings'].update(validation_templates)
 
     settings = mapping_data.setdefault('settings', {})
     settings["index.mapping.ignore_malformed"] = True  # allow malformed input on drafts
@@ -98,25 +97,4 @@ draft_validation_json = {
             }
         }
     }
-}
-
-validation_templates = {
-    "dynamic_templates": [
-        {
-            "validation_jsonschema": {
-                "path_match": "invenio_draft_validation.errors.jsonschema.*",
-                "mapping": {
-                    "type": "keyword",
-                }
-            },
-        },
-        {
-            "validation_marshmallow": {
-                "path_match": "invenio_draft_validation.errors.marshmallow.*",
-                "mapping": {
-                    "type": "keyword",
-                }
-            }
-        }
-    ]
 }

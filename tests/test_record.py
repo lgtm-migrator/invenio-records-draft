@@ -24,11 +24,11 @@ def test_invalid_schema(app):
             'valid': False,
             'errors': {
                 'jsonschema':
-                    {
-                        '': [
+                    [{
+                        'field': '',
+                        'message':
                             'Additional properties are not allowed (\'extra\' was unexpected)'
-                        ]
-                    }
+                    }]
             }
         }
     }
@@ -43,11 +43,11 @@ def test_invalid_marshmallow(app):
         'invenio_draft_validation': {
             'valid': False,
             'errors': {
-                'marshmallow': {
-                    'title': [
+                'marshmallow': [{
+                    'field': 'title',
+                    'message':
                         'Shorter than minimum length 5.'
-                    ]
-                }
+                }]
             }
         }
     }

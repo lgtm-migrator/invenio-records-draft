@@ -61,8 +61,8 @@ def test_endpoints(app):
                 'pid_type': 'drecid',
                 'list_route': '/drafts/records/',
                 'item_route': '/drafts/records/<pid(drecid,record_class="sample.record:SampleRecordDraft"):pid_value>',
-                'pid_fetcher': 'draft_fetcher',
-                'pid_minter': 'draft_minter',
+                'pid_fetcher': 'drecid_fetcher',
+                'pid_minter': 'drecid_minter',
                 'search_index': 'draft-records',
                 'links_factory_imp': 'DraftLinksFactory'
             }
