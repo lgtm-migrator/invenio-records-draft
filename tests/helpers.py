@@ -97,3 +97,20 @@ def dict_to_test(d):
     return {
         k: convert(v) for k, v in d.items()
     }
+
+
+def remove_ts(d):
+    if d is None:
+        return d
+    if isinstance(d, (list, tuple)):
+        for y in d:
+            remove_ts(y)
+        return d
+    if not isinstance(d, dict):
+        return d
+    for k, v in list(d.items()):
+        if k in ('created', 'updated'):
+            del d[k]
+        else:
+            remove_ts(v)
+    return d

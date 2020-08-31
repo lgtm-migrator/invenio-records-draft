@@ -7,10 +7,10 @@ import uuid
 from collections import namedtuple
 
 import pytest
-from flask import Flask, make_response, url_for
+from flask import Flask, make_response, url_for, session, current_app
 from flask.testing import FlaskClient
-from flask_login import LoginManager, login_user
-from flask_principal import Principal
+from flask_login import LoginManager, login_user, logout_user
+from flask_principal import Principal, identity_changed, AnonymousIdentity
 from invenio_accounts.models import Role, User
 from invenio_base.signals import app_loaded
 from invenio_db import InvenioDB
@@ -28,6 +28,8 @@ import invenio_records_rest.views
 from invenio_rest import InvenioREST
 from invenio_search import InvenioSearch, current_search_client
 from invenio_search.cli import destroy, init
+from sqlalchemy_continuum import make_versioned
+
 from oarepo_records_draft.ext import RecordsDraft
 from oarepo_records_draft.record import DraftRecordMixin
 from sample.ext import SampleExt
@@ -72,6 +74,7 @@ def base_app():
         JSONSCHEMAS_HOST='localhost:5000',
         SEARCH_ELASTIC_HOSTS=os.environ.get('SEARCH_ELASTIC_HOSTS', None)
     )
+    make_versioned()
     app.test_client_class = JsonClient
 
     from oarepo_records_draft import config  # noqa
@@ -114,8 +117,25 @@ def app(base_app):
         print("test: logging user with id", id)
         response = make_response()
         user = User.query.get(id)
+        print('User is', user)
         login_user(user)
         set_identity(user)
+        return response
+
+    @base_app.route('/test/logout', methods=['GET', 'POST'])
+    def test_logout():
+        print("test: logging out")
+        response = make_response()
+        logout_user()
+
+        # Remove session keys set by Flask-Principal
+        for key in ('identity.name', 'identity.auth_type'):
+            session.pop(key, None)
+
+        # Tell Flask-Principal the user is anonymous
+        identity_changed.send(current_app._get_current_object(),
+                              identity=AnonymousIdentity())
+
         return response
 
     app_loaded.send(None, app=base_app)

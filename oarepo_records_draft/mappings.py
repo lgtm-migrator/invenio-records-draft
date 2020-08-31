@@ -1,6 +1,8 @@
 import os
 import json
 
+from oarepo_records_draft.types import DraftPublishedRecordConfiguration, DraftManagedRecords
+
 
 def find_alias(aliases, key):
     for k, v in aliases.items():
@@ -35,7 +37,7 @@ def process(mappings, aliases, base_dir, mapping, draft_mapping):
     }
 
 
-def setup_draft_mappings(drafts, app):
+def setup_draft_mappings(managed_records: DraftManagedRecords, app):
     mappings = app.extensions['invenio-search'].mappings
     aliases = app.extensions['invenio-search'].aliases
 
@@ -43,9 +45,12 @@ def setup_draft_mappings(drafts, app):
     if not os.path.exists(transformed_mappings_dir):
         os.makedirs(transformed_mappings_dir)
 
-    for mapping in list(drafts.mappings):
-        if mapping.draft_index_name not in mappings:
-            process(mappings, aliases, transformed_mappings_dir, mapping.index_name, mapping.draft_index_name)
+    for rec in list(managed_records):
+        for schema, index in rec.draft.schema_indices.items():
+            if index not in mappings:
+                process(mappings, aliases, transformed_mappings_dir,
+                        rec.published.get_index(schema),
+                        index)
 
 
 draft_validation_json = {

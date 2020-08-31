@@ -6,6 +6,9 @@
     },
     "$schema": {
       "type": "string"
+    },
+    "control_number": {
+      "type": "string"
     }
   },
   "additionalProperties": false

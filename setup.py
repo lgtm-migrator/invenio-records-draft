@@ -17,6 +17,7 @@ deploy_requires = [
 
 tests_require = [
     'oarepo[tests]~={version}'.format(version=OAREPO_VERSION),
+    'sqlalchemy-continuum'
 ]
 
 extras_require = {

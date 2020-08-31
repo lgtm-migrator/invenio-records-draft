@@ -1,17 +1,18 @@
-from flask import current_app
 from invenio_indexer.utils import schema_to_index
 from invenio_records_rest.loaders.marshmallow import MarshmallowErrors
 from invenio_search import current_search
 from jsonschema import ValidationError as SchemaValidationError
-from marshmallow.exceptions import ValidationError as MarshmallowValidationError
 
 from oarepo_records_draft.proxies import current_drafts
+from oarepo_records_draft.types import RecordEndpointConfiguration
 
 
 class DraftRecordMixin:
 
     def validate(self, **kwargs):
         try:
+            if 'invenio_draft_validation' in self:
+                del self['invenio_draft_validation']
             ret = super().validate(**kwargs)
             self['invenio_draft_validation'] = {
                 'valid': True
@@ -73,8 +74,9 @@ def record_to_index(record):
     if isinstance(schema, dict):
         schema = schema.get('$ref', '')
 
-    index = schema_to_index(schema, index_names=index_names)[0]
-    if 'invenio_draft_validation' in record:
-        index = current_drafts.draft_for_index(index)
+    endpoint: RecordEndpointConfiguration = current_drafts.endpoint_for_record(record)
+    if endpoint:
+        return endpoint.get_index(schema), '_doc'
 
+    index = schema_to_index(schema, index_names=index_names)[0]
     return index, '_doc'

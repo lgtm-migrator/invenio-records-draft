@@ -10,7 +10,8 @@ from invenio_records_rest.utils import deny_all, check_elasticsearch, allow_all
 
 from oarepo_records_draft.links import PublishedLinksFactory, DraftLinksFactory
 from oarepo_records_draft.record import DraftRecordMixin
-from oarepo_records_draft.types import RecordEndpoint
+from oarepo_records_draft.types import RecordEndpointConfiguration, DraftManagedRecords, \
+    PublishedRecordEndpointConfiguration, DraftRecordEndpointConfiguration
 
 
 def setup_draft_endpoints(app, invenio_endpoints):
@@ -19,7 +20,7 @@ def setup_draft_endpoints(app, invenio_endpoints):
     }
 
     drafts = set()
-    endpoints = {}
+    endpoints = DraftManagedRecords()
 
     for published, options in draft_endpoints.items():
         if 'draft' in options:
@@ -33,12 +34,16 @@ def setup_draft_endpoints(app, invenio_endpoints):
         draft = options.pop('draft')
         if draft not in draft_endpoints:
             draft_endpoints[draft] = {}
-        setup_draft_endpoint(app, published, draft, draft_endpoints[published], draft_endpoints[draft])
-        endpoints[published] = RecordEndpoint(published, draft, draft_endpoints[published], draft_endpoints[draft])
+        published_endpoint, draft_endpoint = setup_draft_endpoint(app, published, draft, draft_endpoints[published],
+                                                                  draft_endpoints[draft])
 
-    for endpoint in endpoints.values():
-        invenio_endpoints[endpoint.published_name] = endpoint.published_endpoint
-        invenio_endpoints[endpoint.draft_name] = endpoint.draft_endpoint
+        endpoints.add_record(
+            draft=draft_endpoint,
+            published=published_endpoint
+        )
+
+        invenio_endpoints[published_endpoint.rest_name] = published_endpoint.rest
+        invenio_endpoints[draft_endpoint.rest_name] = draft_endpoint.rest
 
     return endpoints
 
@@ -49,6 +54,26 @@ def copy(source, target, prop):
 
 
 def setup_draft_endpoint(app, published_code, draft_code, published, draft):
+    extra_draft = {}
+    extra_published = {}
+
+    if 'pid_type' not in published:
+        published['pid_type'] = published_code
+
+    if 'pid_type' not in draft:
+        draft['pid_type'] = draft_code
+
+    draft_endpoint = DraftRecordEndpointConfiguration(
+        rest_name=draft_code,
+        rest=draft,
+        extra=extra_draft
+    )
+    published_endpoint = PublishedRecordEndpointConfiguration(
+        rest_name=published_code,
+        rest=published,
+        extra=extra_published
+    )
+
     copy(published, draft, 'default_endpoint_prefix')
     copy(published, draft, 'default_media_type')
     copy(published, draft, 'max_result_window')
@@ -100,17 +125,11 @@ def setup_draft_endpoint(app, published_code, draft_code, published, draft):
     if 'record_class' not in draft:
         draft['record_class'] = generate_draft_record_class(published['record_class'])
 
-    if 'pid_type' not in published:
-        published['pid_type'] = published_code
-
-    if 'pid_type' not in draft:
-        draft['pid_type'] = draft_code
-
     if 'list_route' not in published:
         raise ValueError('list_route not in %s' % json.dumps(published, indent=4, ensure_ascii=False))
 
     if 'list_route' not in draft:
-        draft['list_route'] = '/drafts' + published['list_route']
+        draft['list_route'] = '/draft' + published['list_route']
 
     if 'item_route' not in published:
         raise ValueError('item_route not in %s' % published_code)
@@ -122,7 +141,7 @@ def setup_draft_endpoint(app, published_code, draft_code, published, draft):
         replaced_pid = re.sub(r'<pid\(.*?,', f'<pid({draft["pid_type"]},', published['item_route'])
         replaced_record_class = re.sub(r'record_class\s*=\s*".*?"', f'record_class="{draft["record_class"]}"',
                                        replaced_pid)
-        draft['item_route'] = '/drafts' + replaced_record_class
+        draft['item_route'] = '/draft' + replaced_record_class
 
     if 'pid_fetcher' not in published:
         raise ValueError('pid_fetcher not in %s' % published_code)
@@ -142,27 +161,33 @@ def setup_draft_endpoint(app, published_code, draft_code, published, draft):
     if 'search_index' not in draft:
         draft['search_index'] = 'draft-' + published['search_index']
 
-    publish_permission_factory = draft.pop('publish_permission_factory_imp', deny_all)
-    unpublish_permission_factory = draft.pop('unpublish_permission_factory_imp', deny_all)
-    edit_permission_factory = draft.pop('edit_permission_factory_imp', deny_all)
+    publish_permission_factory = published.pop('publish_permission_factory_imp', deny_all)
+    unpublish_permission_factory = published.pop('unpublish_permission_factory_imp', deny_all)
+    edit_permission_factory = published.pop('edit_permission_factory_imp', deny_all)
+
+    publish_permission_factory = draft.pop('publish_permission_factory_imp', publish_permission_factory)
+    unpublish_permission_factory = draft.pop('unpublish_permission_factory_imp', unpublish_permission_factory)
+    edit_permission_factory = draft.pop('edit_permission_factory_imp', edit_permission_factory)
+
+    extra_draft['publish_permission_factory'] = publish_permission_factory
+    extra_published['unpublish_permission_factory'] = unpublish_permission_factory
+    extra_published['edit_permission_factory'] = edit_permission_factory
+
+    extra_draft['actions'] = draft.pop('actions', {})
+    extra_published['actions'] = published.pop('actions', {})
 
     published['links_factory_imp'] = \
-        PublishedLinksFactory(endpoint_name=published_code,
-                              other_end_pid_type=draft['pid_type'],
-                              other_end_endpoint_name=draft_code,
-                              publish_permission_factory=publish_permission_factory,
-                              unpublish_permission_factory=unpublish_permission_factory,
-                              edit_permission_factory=edit_permission_factory,
-                              extra_urls=published.pop('extra_urls', {}))
+        PublishedLinksFactory(
+            published_endpoint,
+            links_factory=published.get('links_factory_imp'),
+            actions=extra_published['actions'])
 
     draft['links_factory_imp'] = \
-        DraftLinksFactory(endpoint_name=draft_code,
-                          other_end_pid_type=published['pid_type'],
-                          other_end_endpoint_name=published_code,
-                          publish_permission_factory=publish_permission_factory,
-                          unpublish_permission_factory=unpublish_permission_factory,
-                          edit_permission_factory=edit_permission_factory,
-                          extra_urls=draft.pop('extra_urls', {}))
+        DraftLinksFactory(draft_endpoint,
+                          links_factory=draft.get('links_factory_imp'),
+                          actions=extra_draft['actions'])
+
+    return published_endpoint, draft_endpoint
 
 
 def make_draft_fetcher(draft_pid_type, original_fetcher):

@@ -1,4 +1,5 @@
 from invenio_records.api import Record
+from invenio_search import current_search_client
 from oarepo_validate import SchemaKeepingRecordMixin, MarshmallowValidatedRecordMixin
 from sample.marshmallow import SampleSchemaV1
 
