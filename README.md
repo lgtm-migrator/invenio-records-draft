@@ -16,7 +16,7 @@ Invenio Records Draft
   
 ## What the library does
 
-Easily adds draft to all your invenio data models. REST API stays the same with extra operations
+Easily adds draft (a.k.a deposit) to all your invenio data models. REST API stays the same with extra operations
 for publish, unpublish, edit published record. REST example (some links omitted for brevity):
 
 ```bash
@@ -78,9 +78,9 @@ To enable the library for your data model, you have to perform the following ste
 
   * write the "published" version of your model, including marshmallow, mapping and json schemas.
   * Inherit the record from ``SchemaKeepingRecordMixin`` and ``MarshmallowValidatedRecordMixin``
-    from ``oarepo-validate`` modules. See (oarepo-validate)[https://github.com/oarepo/oarepo-validate]
+    from ``oarepo-validate`` modules. See [oarepo-validate](https://github.com/oarepo/oarepo-validate)
     library for details on on-record validation vs. rest-access validation.  
-    See [a sample record](sample/sample/record.py)
+    Have a look at [a sample record](sample/sample/record.py)
   * Drop marshmallow loader & serializer from loaders and serializers, see oarepo-validate for details
   * Move the configuration of rest endpoint from ``RECORDS_REST_ENDPOINTS`` to ``RECORDS_DRAFT_ENDPOINTS``.
     Add ``"draft": "<draftpid>"`` to the configuration, where ``draftpid`` is any unused pid type
