@@ -7,33 +7,34 @@ import uuid
 from collections import namedtuple
 
 import pytest
-from flask import Flask, make_response, url_for
+from flask import Flask, make_response, url_for, session, current_app
 from flask.testing import FlaskClient
-from flask_login import LoginManager, login_user
-from flask_principal import Principal
+from flask_login import LoginManager, login_user, logout_user
+from flask_principal import Principal, identity_changed, AnonymousIdentity
 from invenio_accounts.models import Role, User
 from invenio_base.signals import app_loaded
 from invenio_db import InvenioDB
 from invenio_db import db as _db
 from invenio_indexer import InvenioIndexer
 from invenio_indexer.api import RecordIndexer
-from invenio_jsonschemas import InvenioJSONSchemas, current_jsonschemas
+from invenio_jsonschemas import InvenioJSONSchemas
 from invenio_pidstore import InvenioPIDStore
 from invenio_pidstore.minters import recid_minter
 from invenio_pidstore.models import PersistentIdentifier, PIDStatus
-from invenio_records import InvenioRecords, Record
+from invenio_records import InvenioRecords
 from invenio_records_rest import InvenioRecordsREST
 from invenio_records_rest.utils import PIDConverter
-from invenio_records_rest.views import create_blueprint_from_app
+import invenio_records_rest.views
 from invenio_rest import InvenioREST
 from invenio_search import InvenioSearch, current_search_client
 from invenio_search.cli import destroy, init
-from sqlalchemy_utils import create_database, database_exists
+from sqlalchemy_continuum import make_versioned
 
-from invenio_records_draft.cli import make_mappings, make_schemas
-from invenio_records_draft.ext import InvenioRecordsDraft
-from invenio_records_draft.utils import build_index_name, prefixed_search_index
-from sample.records import Records
+from oarepo_records_draft.ext import RecordsDraft
+from oarepo_records_draft.record import DraftRecordMixin
+from sample.ext import SampleExt
+from sample.record import SampleRecord
+from sqlalchemy_utils import create_database, database_exists
 from tests.helpers import set_identity
 
 
@@ -69,16 +70,19 @@ def base_app():
         SECRET_KEY='TEST_SECRET_KEY',
         INVENIO_INSTANCE_PATH=instance_path,
         SEARCH_INDEX_PREFIX='test-',
+        RECORDS_REST_ENDPOINTS={},
         JSONSCHEMAS_HOST='localhost:5000',
         SEARCH_ELASTIC_HOSTS=os.environ.get('SEARCH_ELASTIC_HOSTS', None)
     )
+    make_versioned()
     app.test_client_class = JsonClient
+
+    from oarepo_records_draft import config  # noqa
 
     InvenioDB(app_)
     InvenioIndexer(app_)
     InvenioSearch(app_)
-    print('records draft registered to app')
-    InvenioRecordsDraft(app_)
+    RecordsDraft(app_)
 
     return app_
 
@@ -88,14 +92,14 @@ def app(base_app):
     """Flask application fixture."""
 
     base_app._internal_jsonschemas = InvenioJSONSchemas(base_app)
-    Records(base_app)
     InvenioREST(base_app)
     InvenioRecordsREST(base_app)
     InvenioRecords(base_app)
     InvenioPIDStore(base_app)
     base_app.url_map.converters['pid'] = PIDConverter
+    SampleExt(base_app)
 
-    base_app.register_blueprint(create_blueprint_from_app(base_app))
+    base_app.register_blueprint(invenio_records_rest.views.create_blueprint_from_app(base_app))
 
     principal = Principal(base_app)
 
@@ -113,8 +117,25 @@ def app(base_app):
         print("test: logging user with id", id)
         response = make_response()
         user = User.query.get(id)
+        print('User is', user)
         login_user(user)
         set_identity(user)
+        return response
+
+    @base_app.route('/test/logout', methods=['GET', 'POST'])
+    def test_logout():
+        print("test: logging out")
+        response = make_response()
+        logout_user()
+
+        # Remove session keys set by Flask-Principal
+        for key in ('identity.name', 'identity.auth_type'):
+            session.pop(key, None)
+
+        # Tell Flask-Principal the user is anonymous
+        identity_changed.send(current_app._get_current_object(),
+                              identity=AnonymousIdentity())
+
         return response
 
     app_loaded.send(None, app=base_app)
@@ -127,6 +148,7 @@ def app(base_app):
 def client(app):
     """Get test client."""
     with app.test_client() as client:
+        print(app.url_map)
         yield client
 
 
@@ -147,48 +169,13 @@ def db(app):
 
 
 @pytest.fixture
-def schemas(app):
-    runner = app.test_cli_runner()
-    result = runner.invoke(make_schemas)
-    if result.exit_code:
-        print(result.output, file=sys.stderr)
-    assert result.exit_code == 0
-
-    # trigger registration of new schemas, normally performed
-    # via app_loaded signal that is not emitted in tests
-    with app.app_context():
-        app.extensions['invenio-records-draft']._register_draft_schemas(app)
-        app.extensions['invenio-records-draft']._register_draft_mappings(app)
-
-    return {
-        'published': 'https://localhost:5000/schemas/records/record-v1.0.0.json',
-        'draft': 'https://localhost:5000/schemas/draft/records/record-v1.0.0.json',
-    }
-
-
-@pytest.fixture
-def mappings(app, schemas):
-    runner = app.test_cli_runner()
-    result = runner.invoke(make_mappings)
-    if result.exit_code:
-        print(result.output, file=sys.stderr)
-    assert result.exit_code == 0
-
-    # trigger registration of new schemas, normally performed
-    # via app_loaded signal that is not emitted in tests
-    with app.app_context():
-        app.extensions['invenio-records-draft']._register_draft_schemas(app)
-        app.extensions['invenio-records-draft']._register_draft_mappings(app)
-
-
-@pytest.fixture
 def published_records_url(app):
-    return url_for('invenio_records_rest.published_records_list')
+    return url_for('oarepo_records_rest.published_records_list')
 
 
 @pytest.fixture
 def draft_records_url(app):
-    return url_for('invenio_records_rest.draft_records_list')
+    return url_for('oarepo_records_rest.draft_records_list')
 
 
 TestUsers = namedtuple('TestUsers', ['u1', 'u2', 'u3', 'r1', 'r2'])
@@ -226,10 +213,6 @@ def prepare_es(app, db):
     if result.exit_code:
         print(result.output, file=sys.stderr)
     assert result.exit_code == 0
-    aliases = current_search_client.indices.get_alias("*")
-
-    assert build_index_name('records-record-v1.0.0') in aliases
-    assert build_index_name('draft-records-record-v1.0.0') in aliases
 
 
 @pytest.fixture()
@@ -241,12 +224,16 @@ def published_record(app, db, schemas, mappings, prepare_es):
         '$schema': schemas['published']
     }
     recid_minter(record_uuid, data)
-    rec = Record.create(data, id_=record_uuid)
+    rec = SampleRecord.create(data, id_=record_uuid)
     RecordIndexer().index(rec)
     current_search_client.indices.refresh()
     current_search_client.indices.flush()
 
     return rec
+
+
+class SampleDraftRecord(DraftRecordMixin, SampleRecord):
+    pass
 
 
 @pytest.fixture()
@@ -262,7 +249,7 @@ def draft_record(app, db, schemas, mappings, prepare_es):
         pid_type='drecid', pid_value='1', status=PIDStatus.REGISTERED,
         object_type='rec', object_uuid=draft_uuid
     )
-    rec = Record.create(data, id_=draft_uuid)
+    rec = SampleDraftRecord.create(data, id_=draft_uuid)
 
     RecordIndexer().index(rec)
     current_search_client.indices.refresh()

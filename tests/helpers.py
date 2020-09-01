@@ -1,3 +1,5 @@
+import collections
+from collections import namedtuple
 from contextlib import contextmanager
 
 import flask
@@ -9,7 +11,7 @@ from invenio_records_rest.utils import allow_all
 from marshmallow import ValidationError
 from marshmallow import __version_info__ as marshmallow_version
 
-from invenio_records_draft.proxies import current_drafts
+from oarepo_records_draft.proxies import current_drafts
 
 
 def header_links(resp):
@@ -63,3 +65,52 @@ def marshmallow_load(schema, data):
     if ret[1] != {}:
         raise ValidationError(message=ret[1])
     return ret[0]
+
+
+def isinstance_namedtuple(x):
+    return (isinstance(x, tuple) and
+            getattr(x, '_fields', None) is not None)
+
+
+def dict_to_test(d):
+    def convert(x):
+        if x is None:
+            return x
+        if type(x) in (str, int, bool):
+            return x
+        if isinstance_namedtuple(x):
+            return dict_to_test(x._asdict())
+        if isinstance(x, dict):
+            return dict_to_test(x)
+        if isinstance(x, (list, tuple)):
+            return [convert(y) for y in x]
+        try:
+            return x.__name__
+        except:
+            pass
+        try:
+            return x.__class__.__name__
+        except:
+            pass
+        return x
+
+    return {
+        k: convert(v) for k, v in d.items()
+    }
+
+
+def remove_ts(d):
+    if d is None:
+        return d
+    if isinstance(d, (list, tuple)):
+        for y in d:
+            remove_ts(y)
+        return d
+    if not isinstance(d, dict):
+        return d
+    for k, v in list(d.items()):
+        if k in ('created', 'updated'):
+            del d[k]
+        else:
+            remove_ts(v)
+    return d

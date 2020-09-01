@@ -19,24 +19,20 @@ setup(
     include_package_data=True,
     platforms='any',
     entry_points={
-        'invenio_base.apps': [
-            'records = records:Records',
-        ],
-        'invenio_base.blueprints': [
-            'records_records = records.views:blueprint',
-        ],
         'invenio_config.module': [
             'sample = config',
-            'records = records.config',
         ],
-        'invenio_base.api_apps': [
-            'sample = records:Records',
-         ],
         'invenio_jsonschemas.schemas': [
-            'sample = records.jsonschemas'
+            'sample = sample.jsonschemas'
         ],
         'invenio_search.mappings': [
-            'records = records.mappings'
+            'sample = sample.mappings'
+        ],
+        'invenio_base.api_apps': [
+            'sample = sample.ext:SampleExt',
+        ],
+        'invenio_base.apps': [
+            'sample = sample.ext:SampleExt',
         ],
     },
     classifiers=[

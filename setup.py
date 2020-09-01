@@ -4,9 +4,7 @@ import os
 from os import path
 
 from setuptools import setup
-
-readme = open('README.rst').read()
-
+    
 OAREPO_VERSION = os.environ.get('OAREPO_VERSION', '3.1.1')
 
 install_requires = [
@@ -19,6 +17,7 @@ deploy_requires = [
 
 tests_require = [
     'oarepo[tests]~={version}'.format(version=OAREPO_VERSION),
+    'sqlalchemy-continuum'
 ]
 
 extras_require = {
@@ -35,33 +34,36 @@ setup_requires = [
 ]
 
 g = {}
-with open(os.path.join('invenio_records_draft', 'version.py'), 'rt') as fp:
+with open(os.path.join('oarepo_records_draft', 'version.py'), 'rt') as fp:
     exec(fp.read(), g)
     version = g['__version__']
 
 this_directory = path.abspath(path.dirname(__file__))
-with open(path.join(this_directory, 'README.rst'), encoding='utf-8') as f:
+with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(
-    name="oarepo-invenio-records-draft",
+    name="oarepo-records-draft",
     version=version,
-    url="https://github.com/oarepo/invenio-records-draft",
+    url="https://github.com/oarepo/oarepo-records-draft",
     license="MIT",
     author="Mirek Šimek",
     author_email="miroslav.simek@vscht.cz",
     description="Handling Draft and Production invenio records in one package",
     zip_safe=False,
-    packages=['invenio_records_draft'],
+    packages=['oarepo_records_draft'],
     entry_points={
-        'flask.commands': [
-            'draft = invenio_records_draft.cli:draft',
+        # 'flask.commands': [
+        #     'draft = oarepo_records_draft.cli:draft',
+        # ],
+        'invenio_config.module': [
+            'oarepo_records_draft = oarepo_records_draft.config',
         ],
         'invenio_base.api_apps': [
-            'invenio_records_draft = invenio_records_draft.ext:InvenioRecordsDraft',
+            'oarepo_records_draft = oarepo_records_draft.ext:RecordsDraft',
         ],
         'invenio_base.apps': [
-            'invenio_records_draft = invenio_records_draft.ext:InvenioRecordsDraft',
+            'oarepo_records_draft = oarepo_records_draft.ext:RecordsDraft',
         ],
     },
     include_package_data=True,
@@ -70,7 +72,7 @@ setup(
     install_requires=install_requires,
     tests_require=tests_require,
     long_description=long_description,
-    long_description_content_type='text/x-rst',
+    long_description_content_type='text/markdown',
     platforms='any',
     classifiers=[
         'Environment :: Web Environment',
