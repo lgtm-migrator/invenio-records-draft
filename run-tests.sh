@@ -28,4 +28,4 @@
 pip install -e sample
 # isort -rc -c -df . && \
 check-manifest --ignore ".travis-*" && \
-pytest
+pytest -vv
