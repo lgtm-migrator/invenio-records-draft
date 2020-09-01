@@ -6,7 +6,8 @@ from os import path
 from setuptools import setup
 
 install_requires = [
-    'wrapt>=1.11.2'
+    'wrapt>=1.11.2',
+    'oarepo_validate'
 ]
 
 tests_require = [
