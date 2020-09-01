@@ -52,6 +52,5 @@ RECORDS_DRAFT_ENDPOINTS = {
         create_permission_factory_imp=allow_all,
         delete_permission_factory_imp=allow_all,
         update_permission_factory_imp=allow_all,
-
     )
 }
