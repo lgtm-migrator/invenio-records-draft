@@ -4,29 +4,17 @@ import os
 from os import path
 
 from setuptools import setup
-    
-OAREPO_VERSION = os.environ.get('OAREPO_VERSION', '3.1.1')
 
 install_requires = [
     'wrapt>=1.11.2'
 ]
 
-deploy_requires = [
-    'oarepo[deploy]~={version}'.format(version=OAREPO_VERSION),
-]
-
 tests_require = [
-    'oarepo[tests]~={version}'.format(version=OAREPO_VERSION),
-    'sqlalchemy-continuum'
+    'oarepo[tests]'
 ]
 
 extras_require = {
     'tests': tests_require,
-    'tests-es7': {
-        'oarepo[tests-es7]~={version}'.format(version=OAREPO_VERSION),
-    },
-    'devel': tests_require,
-    'deploy': deploy_requires,
 }
 
 setup_requires = [
@@ -82,10 +70,8 @@ setup(
         'Programming Language :: Python',
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
         'Topic :: Software Development :: Libraries :: Python Modules',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.8',
         'Development Status :: 4 - Beta',
     ],
 )
