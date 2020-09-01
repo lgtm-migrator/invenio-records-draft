@@ -11,25 +11,19 @@ class DraftRecordMixin:
 
     def validate(self, **kwargs):
         try:
-            print('before validate', dict(self))
             if 'invenio_draft_validation' in self:
                 del self['invenio_draft_validation']
-            print('after del', dict(self))
             ret = super().validate(**kwargs)
             self['invenio_draft_validation'] = {
                 'valid': True
             }
-            print('ok', dict(self))
             return ret
         except MarshmallowErrors as e:
             self.save_marshmallow_error(e)
-            print('marshmallow error', dict(self))
         except SchemaValidationError as e:
             self.save_schema_error(e)
-            print('schema error', dict(self))
         except Exception as e:
             self.save_generic_error(e)
-            print('generic error', dict(self))
 
     def save_marshmallow_error(self, err: MarshmallowErrors):
         errors = []

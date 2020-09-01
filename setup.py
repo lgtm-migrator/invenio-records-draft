@@ -11,7 +11,8 @@ install_requires = [
 ]
 
 tests_require = [
-    'oarepo[tests]'
+    'oarepo[tests]',
+    'pytest-cov'
 ]
 
 extras_require = {
