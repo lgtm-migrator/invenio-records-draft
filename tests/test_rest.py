@@ -58,6 +58,7 @@ def test_draft_create(app, db, client, prepare_es, test_users):
             'total': 1},
         'links': {'self': 'http://localhost:5000/draft/records/?size=10&page=1'}}
 
+    print('before patch')
     resp = client.patch('/draft/records/1',
                         data=json.dumps([{'op': 'replace', 'path': '/title', 'value': 'longer test'}]),
                         content_type='application/json-patch+json')
