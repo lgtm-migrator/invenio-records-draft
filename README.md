@@ -145,7 +145,7 @@ RECORDS_DRAFT_ENDPOINTS = {
 ```    
 
 Run ``invenio index init/create``, start server and you're done. A new endpoint has been created for you 
-and is at ``/api/draft/records``. The whole configuration is in [sample app](sample/sample/config.json)
+and is at ``/api/draft/records``. The whole configuration is in [sample app](sample/sample/)
 
 ## Library principles:
 
