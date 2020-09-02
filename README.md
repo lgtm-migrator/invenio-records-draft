@@ -340,7 +340,7 @@ Returns a list of
    7. refreshes affected ES indices
    
    
-### ``unpublish(record: Record, record_pid: PersistentIdentifier)``
+### ``edit(record: Record, record_pid: PersistentIdentifier)``
 
 Keeps published instance and creates a draft one. ``record`` is the published record to be edited
 , ``record_pid`` is its persistent identifier.
