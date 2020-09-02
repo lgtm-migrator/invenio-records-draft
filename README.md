@@ -158,7 +158,7 @@ and is at ``/api/draft/records``. The whole configuration is in [sample app](sam
 
 2.  "Draft" records live at a different endpoint and different ES index
     than published ones. The recommended URL is `/api/records` for the
-    published records and `/api/drafts/records` for drafts
+    published records and `/api/draft/records` for drafts
 
 3.  Draft and published records share the same value of pid but have two
     different pid types
@@ -299,4 +299,91 @@ You can delete the draft record if desired or update and publish it again.
 
 ## Python API
 
+The entrypoint to python API is at ``oarepo_records_draft.current_drafts``. It has the following
+public methods:
+
+### ``publish(record: Record, record_pid: PersistentIdentifier)``
+
+Publishes an instance of draft record with draft pid ``record_pid``. 
+Raises InvalidRecordException if the record is not valid (according to jsonschema/marshmallow)
+and can not be published. Returns a list of 
+``(draft_record: Record, published_record_context: RecordContext)`` tuples.
+
+#### What it does:
+
+   1. invokes ``collect_records_for_action`` signal to collect all records that should be published
+      (sometimes linked records should be published as well)
+   2. calls ``check_can_publish`` signal for each collected record
+   3. calls ``before_publish`` signal
+   4. for each record in reversed collected records publishes the record and deletes draft one
+   5. calls ``after_publish`` signal
+   6. for each record removes draft record from elasticsearch and indexes published one
+   7. refreshes affected ES indices
+   
+### ``unpublish(record: Record, record_pid: PersistentIdentifier)``
+
+Removes published instance and creates a draft one. ``record`` is the published record being
+unpublished, ``record_pid`` is its persistent identifier.
+
+Returns a list of 
+``(published_record: Record, draft_record_context: RecordContext)`` tuples.
+
+#### What it does:
+
+   1. invokes ``collect_records_for_action`` signal to collect all records that should be published
+      (sometimes linked records should be published as well)
+   2. calls ``check_can_unpublish`` signal for each collected record
+   3. calls ``before_unpublish`` signal
+   4. for each record in reversed collected records removes the published record and creates draft
+   5. calls ``after_unpublish`` signal
+   6. for each record removes published record from elasticsearch and indexes draft one
+   7. refreshes affected ES indices
+   
+   
+### ``unpublish(record: Record, record_pid: PersistentIdentifier)``
+
+Keeps published instance and creates a draft one. ``record`` is the published record to be edited
+, ``record_pid`` is its persistent identifier.
+
+Returns a list of 
+``(published_record: Record, draft_record_context: RecordContext)`` tuples.
+
+#### What it does:
+
+   1. invokes ``collect_records_for_action`` signal to collect all records that should be published
+      (sometimes linked records should be published as well)
+   2. calls ``check_can_edit`` signal for each collected record
+   3. calls ``before_edit`` signal
+   4. for each record in reversed collected records removes creates draft record
+   5. calls ``after_edit`` signal
+   6. Indexes each created draft record in ES
+   7. refreshes affected ES indices
+
 ### Signals
+
+See [signals.py](oarepo_records_draft/signals.py) for the exhaustive list of signals
+
+## Q&A
+
+### Can I provide my own record class for draft records?
+
+Yes. The class has to inherit ``DraftRecordMixin``, ``SchemaKeepingRecordMixin`` and 
+``MarshmallowValidatedRecordMixin``. ``DraftRecordMixin`` should be the first mixin.
+
+Set ``record_class`` property in ``RECORDS_DRAFT_ENDPOINTS/<your draft endpoint>``
+
+### Can I provide my own link factory for either draft or published record?
+
+Yes. Provide ``links_factory_imp`` as usual and it will get called. URLs for 
+publishing/unpublishing/editing will be added automatically
+
+### Can I change XXX in rest config?
+
+Yes, you can. Some of the values are automatically provided for drafts, please
+consult [endpoints.py](oarepo_records_draft/endpoints.py) to see if the value
+should be modified for draft record or not.
+
+### I have my own ``record_to_index`` implementation. Is this library compatible?
+
+Might be. See [record.py](oarepo_records_draft/record.py) to see which index must be used
+for draft records.

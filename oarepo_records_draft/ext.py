@@ -1,7 +1,7 @@
 import functools
 import logging
 import uuid
-from typing import List
+from typing import List, Union
 
 import invenio_indexer.config
 from invenio_base.signals import app_loaded
@@ -10,6 +10,7 @@ from invenio_indexer.api import RecordIndexer
 from invenio_indexer.utils import schema_to_index
 from invenio_pidstore.errors import PIDDoesNotExistError
 from invenio_pidstore.models import PersistentIdentifier, PIDStatus
+from invenio_records import Record
 from invenio_search import current_search, current_search_client
 from oarepo_validate.record import AllowedSchemaMixin
 
@@ -90,7 +91,10 @@ class RecordsDraftState:
     def endpoint_for_pid_type(self, pid_type):
         return self.managed_records.by_pid_type[pid_type]
 
-    def publish(self, record: RecordContext):
+    def publish(self, record: Union[RecordContext, Record], record_pid=None):
+        if isinstance(record, Record):
+            record = RecordContext(record=record, record_pid=record_pid)
+
         with db.session.begin_nested():
             # collect all records to be published (for example, references etc)
             collected_records = self.collect_records_for_action(record, CollectAction.PUBLISH)
@@ -143,7 +147,10 @@ class RecordsDraftState:
 
         return result
 
-    def edit(self, record: RecordContext):
+    def edit(self, record: Union[RecordContext, Record], record_pid=None):
+        if isinstance(record, Record):
+            record = RecordContext(record=record, record_pid=record_pid)
+
         with db.session.begin_nested():
             # collect all records to be draft (for example, references etc)
             collected_records = self.collect_records_for_action(record, CollectAction.EDIT)
@@ -181,7 +188,10 @@ class RecordsDraftState:
 
         return result
 
-    def unpublish(self, record: RecordContext):
+    def unpublish(self, record: Union[RecordContext, Record], record_pid=None):
+        if isinstance(record, Record):
+            record = RecordContext(record=record, record_pid=record_pid)
+
         with db.session.begin_nested():
             # collect all records to be draft (for example, references etc)
             collected_records = self.collect_records_for_action(record, CollectAction.UNPUBLISH)
