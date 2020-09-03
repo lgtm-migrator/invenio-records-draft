@@ -12,7 +12,7 @@ def test_draft_mapping(app):
         'mappings': {
             'dynamic': False,
             'properties': {
-                'invenio_draft_validation': {
+                'oarepo:validity': {
                     'properties': {
                         "errors": {
                             "type": "object",

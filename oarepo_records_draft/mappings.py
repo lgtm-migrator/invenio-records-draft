@@ -54,7 +54,7 @@ def setup_draft_mappings(managed_records: DraftManagedRecords, app):
 
 
 draft_validation_json = {
-    "invenio_draft_validation": {
+    "oarepo:validity": {
         "type": "object",
         "properties": {
             "valid": {

@@ -7,7 +7,7 @@ def test_valid_record(app):
     assert dict(rec) == {
         '$schema': 'https://localhost:5000/schemas/sample/sample-v1.0.0.json',
         'title': 'longer',
-        'invenio_draft_validation': {
+        'oarepo:validity': {
             'valid': True
         }
     }
@@ -20,7 +20,7 @@ def test_invalid_schema(app):
         '$schema': 'https://localhost:5000/schemas/sample/sample-v1.0.0.json',
         'title': 'longer',
         'extra': False,
-        'invenio_draft_validation': {
+        'oarepo:validity': {
             'valid': False,
             'errors': {
                 'jsonschema':
@@ -40,7 +40,7 @@ def test_invalid_marshmallow(app):
     assert dict(rec) == {
         '$schema': 'https://localhost:5000/schemas/sample/sample-v1.0.0.json',
         'title': 'abc',
-        'invenio_draft_validation': {
+        'oarepo:validity': {
             'valid': False,
             'errors': {
                 'marshmallow': [{

@@ -11,10 +11,10 @@ class DraftRecordMixin:
 
     def validate(self, **kwargs):
         try:
-            if 'invenio_draft_validation' in self:
-                del self['invenio_draft_validation']
+            if 'oarepo:validity' in self:
+                del self['oarepo:validity']
             ret = super().validate(**kwargs)
-            self['invenio_draft_validation'] = {
+            self['oarepo:validity'] = {
                 'valid': True
             }
             return ret
@@ -33,7 +33,7 @@ class DraftRecordMixin:
             else:
                 errors.append({'field': e['field'], 'message': e['message']})
 
-        self['invenio_draft_validation'] = {
+        self['oarepo:validity'] = {
             'valid': False,
             'errors': {
                 'marshmallow': errors
@@ -41,7 +41,7 @@ class DraftRecordMixin:
         }
 
     def save_schema_error(self, err: SchemaValidationError):
-        self['invenio_draft_validation'] = {
+        self['oarepo:validity'] = {
             'valid': False,
             'errors': {
                 'jsonschema': [{
@@ -52,7 +52,7 @@ class DraftRecordMixin:
         }
 
     def save_generic_error(self, err):
-        self['invenio_draft_validation'] = {
+        self['oarepo:validity'] = {
             'valid': False,
             'errors': {
                 'other': str(err)

@@ -29,7 +29,7 @@ returns:
     {
       "metadata": {
         "title": "blah",
-        "oarepo:validation": {
+        "oarepo:validity": {
           "valid": false,
           "marshmallow": [
             "field": "title",
@@ -52,7 +52,7 @@ returns:
       },
       "metadata": {
         "title": "longer blah",
-        "oarepo:validation": {
+        "oarepo:validity": {
           "valid": true
         }
       }
@@ -192,7 +192,7 @@ and is at ``/api/draft/records``. The whole configuration is in [sample app](sam
          302 is returned pointing to the published record.
 
 7.  The serialized representation of a draft record contains a section
-    named `oarepo:validation`. This section contains the result
+    named `oarepo:validity`. This section contains the result
     of marshmallow and JSONSchema validation against original schemas.
 
 8. Deletion of a published record does not delete the draft record.
@@ -234,7 +234,7 @@ $ curl https://localhost:5000/api/draft/records/1
   },
   metadata: {
     "title": "blah",
-    "oarepo:validation": {
+    "oarepo:validity": {
        "valid": true
      }
   }

@@ -251,11 +251,11 @@ class RecordsDraftState:
         draft_pid = record_context.record_pid
         # clone metadata
         metadata = dict(draft_record)
-        if 'invenio_draft_validation' in metadata:
-            if not metadata['invenio_draft_validation']['valid']:
+        if 'oarepo:validity' in metadata:
+            if not metadata['oarepo:validity']['valid']:
                 raise InvalidRecordException('Can not publish invalid record',
-                                             errors=metadata['invenio_draft_validation']['errors'])
-            del metadata['invenio_draft_validation']
+                                             errors=metadata['oarepo:validity']['errors'])
+            del metadata['oarepo:validity']
 
         before_publish_record.send(draft_record, metadata=metadata, record=record_context,
                                    collected_records=collected_records)

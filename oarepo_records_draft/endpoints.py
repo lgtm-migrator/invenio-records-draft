@@ -3,10 +3,12 @@ import re
 
 from invenio_app.helpers import obj_or_import_string
 from invenio_db import db
+from invenio_indexer.utils import schema_to_index
 from invenio_pidstore import current_pidstore
 from invenio_pidstore.fetchers import FetchedPID
 from invenio_pidstore.models import PersistentIdentifier
 from invenio_records_rest.utils import deny_all, check_elasticsearch, allow_all
+from invenio_search import current_search
 
 from oarepo_records_draft.links import PublishedLinksFactory, DraftLinksFactory
 from oarepo_records_draft.record import DraftRecordMixin
@@ -48,7 +50,11 @@ def setup_draft_endpoints(app, invenio_endpoints):
     return endpoints
 
 
-def copy(source, target, prop):
+def copy(source, target, prop, default=None):
+
+    if default is not None and prop not in source:
+        source[prop] = default
+
     if prop in source and prop not in target:
         target[prop] = source[prop]
 
@@ -78,9 +84,13 @@ def setup_draft_endpoint(app, published_code, draft_code, published, draft):
     copy(published, draft, 'default_media_type')
     copy(published, draft, 'max_result_window')
     copy(published, draft, 'record_loaders')
-    copy(published, draft, 'record_serializers')
+    copy(published, draft, 'record_serializers', {
+         'application/json': 'oarepo_validate:json_response',
+    })
     copy(published, draft, 'record_serializers_aliases')
-    copy(published, draft, 'search_serializers')
+    copy(published, draft, 'search_serializers', {
+        'application/json': 'oarepo_validate:json_search',
+    })
     copy(published, draft, 'search_serializers_aliases')
     copy(published, draft, 'search_class')
     copy(published, draft, 'indexer_class')
@@ -126,13 +136,17 @@ def setup_draft_endpoint(app, published_code, draft_code, published, draft):
         draft['record_class'] = generate_draft_record_class(published['record_class'])
 
     if 'list_route' not in published:
-        raise ValueError('list_route not in %s' % json.dumps(published, indent=4, ensure_ascii=False))
+        published['list_route'] = '/' + published_code
 
     if 'list_route' not in draft:
         draft['list_route'] = '/draft' + published['list_route']
 
     if 'item_route' not in published:
-        raise ValueError('item_route not in %s' % published_code)
+        record_pid = 'pid(%s,record_class="%s")' % (published['pid_type'], published['record_class'])
+        route = published['list_route']
+        if not route.endswith('/'):
+            route += '/'
+        published['item_route'] = route + '<{0}:pid_value>'.format(record_pid)
 
     if 'item_route' not in draft:
         if not isinstance(draft['record_class'], str):
@@ -156,7 +170,15 @@ def setup_draft_endpoint(app, published_code, draft_code, published, draft):
         draft['pid_minter'] = make_draft_minter(draft['pid_type'], published['pid_minter'])
 
     if 'search_index' not in published:
-        raise ValueError('search_index not in %s' % published_code)
+        record_class = obj_or_import_string(published['record_class'])
+        if not hasattr(record_class, 'PREFERRED_SCHEMA'):
+            raise ValueError('search_index not in %s' % published_code)
+        preferred_schema = record_class.PREFERRED_SCHEMA
+        index, doc_type = schema_to_index(preferred_schema, index_names=current_search.mappings.keys())
+        if index:
+            published['search_index'] = index
+        else:
+            raise ValueError('search_index not in %s and can not be determined from PREFERRED_SCHEMA' % published_code)
 
     if 'search_index' not in draft:
         draft['search_index'] = 'draft-' + published['search_index']

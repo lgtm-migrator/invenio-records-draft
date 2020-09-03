@@ -16,7 +16,7 @@ def test_draft_create(app, db, client, prepare_es, test_users):
         "metadata": {
             "$schema": "https://localhost:5000/schemas/sample/sample-v1.0.0.json",
             "control_number": "1",
-            "invenio_draft_validation": {
+            "oarepo:validity": {
                 "errors": {
                     "marshmallow": [{
                         "field": "title",
@@ -44,7 +44,7 @@ def test_draft_create(app, db, client, prepare_es, test_users):
                     'metadata': {
                         '$schema': 'https://localhost:5000/schemas/sample/sample-v1.0.0.json',
                         'control_number': '1',
-                        'invenio_draft_validation': {
+                        'oarepo:validity': {
                             'errors': {
                                 'marshmallow': [
                                     {
@@ -78,7 +78,7 @@ def test_draft_create(app, db, client, prepare_es, test_users):
                     'metadata': {
                         '$schema': 'https://localhost:5000/schemas/sample/sample-v1.0.0.json',
                         'control_number': '1',
-                        'invenio_draft_validation': {
+                        'oarepo:validity': {
                             'valid': True
                         },
                         'title': 'longer test'
@@ -109,7 +109,7 @@ def test_draft_create(app, db, client, prepare_es, test_users):
         'metadata': {
             '$schema': 'https://localhost:5000/schemas/sample/sample-v1.0.0.json',
             'control_number': '1',
-            'invenio_draft_validation': {
+            'oarepo:validity': {
                 'valid': True
             },
             'title': 'longer test'
