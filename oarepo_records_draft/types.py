@@ -67,7 +67,10 @@ class DraftRecordEndpointConfiguration(RecordEndpointConfiguration):
         super().__init__(published=False, rest_name=rest_name, rest=rest, extra=extra, paired_endpoint=paired_endpoint)
 
     def set_index(self, schema, index):
-        self.schema_indices[schema] = 'draft-' + index
+        if index:
+            self.schema_indices[schema] = 'draft-' + index
+        else:
+            self.schema_indices[schema] = index
 
 
 class DraftPublishedRecordConfiguration:
@@ -83,7 +86,10 @@ class DraftPublishedRecordConfiguration:
 
     def set_index(self, schema, index):
         self.published.set_index(schema, index)
-        self.draft.set_index(schema, 'draft-' + index)
+        if index:
+            self.draft.set_index(schema, 'draft-' + index)
+        else:
+            self.draft.set_index(schema, index)
 
 
 class DraftManagedRecords:

@@ -13,6 +13,9 @@ def find_alias(aliases, key):
 
 def process(mappings, aliases, base_dir, mapping, draft_mapping):
     # load the file, convert its types and write it back into cache directory
+    if not draft_mapping:
+        return
+
     dest_file = os.path.join(base_dir, os.path.basename(draft_mapping))
     with open(mappings[mapping]) as f:
         mapping_data = json.load(f)
