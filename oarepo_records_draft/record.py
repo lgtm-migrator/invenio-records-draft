@@ -13,7 +13,7 @@ class DraftRecordMixin:
         try:
             if 'oarepo:validity' in self:
                 del self['oarepo:validity']
-            ret = super().validate(**kwargs)
+            ret = super().validate(draft_validation=True, **kwargs)
             self['oarepo:validity'] = {
                 'valid': True
             }

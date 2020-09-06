@@ -241,9 +241,14 @@ def make_draft_minter(draft_pid_type, original_minter):
             else:
                 # create a new pid as if the record were published
                 pid = current_pidstore.minters[original_minter](record_uuid, data)
-                # but change the pid type to draft
-                pid.pid_type = draft_pid_type
-                db.session.add(pid)
+
+                try:
+                    # if the draft version already exists, return it
+                    return PersistentIdentifier.get(draft_pid_type, pid.pid_value)
+                except:
+                    # otherwise change the pid type to draft and return it
+                    pid.pid_type = draft_pid_type
+                    db.session.add(pid)
                 return pid
 
     current_pidstore.minters[draft_pid_type + '_minter'] = draft_minter
