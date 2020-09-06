@@ -51,7 +51,6 @@ def setup_draft_endpoints(app, invenio_endpoints):
 
 
 def copy(source, target, prop, default=None):
-
     if default is not None and prop not in source:
         source[prop] = default
 
@@ -80,12 +79,12 @@ def setup_draft_endpoint(app, published_code, draft_code, published, draft):
         extra=extra_published
     )
 
-    copy(published, draft, 'default_endpoint_prefix')
-    copy(published, draft, 'default_media_type')
+    copy(published, draft, 'default_endpoint_prefix', True)
+    copy(published, draft, 'default_media_type', 'application/json')
     copy(published, draft, 'max_result_window')
     copy(published, draft, 'record_loaders')
     copy(published, draft, 'record_serializers', {
-         'application/json': 'oarepo_validate:json_response',
+        'application/json': 'oarepo_validate:json_response',
     })
     copy(published, draft, 'record_serializers_aliases')
     copy(published, draft, 'search_serializers', {
@@ -181,7 +180,10 @@ def setup_draft_endpoint(app, published_code, draft_code, published, draft):
             raise ValueError('search_index not in %s and can not be determined from PREFERRED_SCHEMA' % published_code)
 
     if 'search_index' not in draft:
-        draft['search_index'] = 'draft-' + published['search_index']
+        if published['search_index']:
+            draft['search_index'] = 'draft-' + published['search_index']
+        else:
+            draft['search_index'] = None
 
     publish_permission_factory = published.pop('publish_permission_factory_imp', deny_all)
     unpublish_permission_factory = published.pop('unpublish_permission_factory_imp', deny_all)
