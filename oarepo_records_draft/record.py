@@ -2,9 +2,18 @@ from invenio_indexer.utils import schema_to_index
 from invenio_records_rest.loaders.marshmallow import MarshmallowErrors
 from invenio_search import current_search
 from jsonschema import ValidationError as SchemaValidationError
+from oarepo_validate import after_marshmallow_validate
 
 from oarepo_records_draft.proxies import current_drafts
 from oarepo_records_draft.types import RecordEndpointConfiguration
+
+
+@after_marshmallow_validate.connect
+def after_validation(sender, record=None, context=None, result=None, error=None, **validate_kwargs):
+    # update the result even if there is an error
+    if validate_kwargs.get('draft_validation', False):
+        if error and error.valid_data:
+            record.update(error.valid_data)
 
 
 class DraftRecordMixin:
@@ -29,9 +38,9 @@ class DraftRecordMixin:
         errors = []
         for e in err.errors:
             if e['parents']:
-                errors.append({'field': '.'.join(e['parents']) + '.' + e['field'], 'message': e['message']})
+                errors.append({'field': '.'.join(str(x) for x in e['parents']) + '.' + str(e['field']), 'message': e['message']})
             else:
-                errors.append({'field': e['field'], 'message': e['message']})
+                errors.append({'field': str(e['field']), 'message': e['message']})
 
         self['oarepo:validity'] = {
             'valid': False,
