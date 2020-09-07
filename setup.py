@@ -7,7 +7,8 @@ from setuptools import setup
 
 install_requires = [
     'wrapt>=1.11.2',
-    'oarepo_validate'
+    'oarepo_validate',
+    'deepmerge'
 ]
 
 tests_require = [
