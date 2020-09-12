@@ -91,6 +91,17 @@ class RecordsDraftState:
     def endpoint_for_pid_type(self, pid_type):
         return self.managed_records.by_pid_type[pid_type]
 
+    def endpoint_for_metadata(self, metadata):
+        is_draft = 'oarepo:validity' in metadata
+        schema = metadata.get('$schema', None)
+        if not schema:
+            return None
+        return self.endpoint_for_schema(schema, is_draft)
+
+    @functools.lru_cache(maxsize=32)
+    def endpoint_for_schema(self, schema, is_draft):
+        return self.managed_records.by_schema(schema, is_draft)
+
     def publish(self, record: Union[RecordContext, Record], record_pid=None):
         if isinstance(record, Record):
             record = RecordContext(record=record, record_pid=record_pid)

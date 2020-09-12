@@ -141,6 +141,16 @@ class DraftManagedRecords:
         # the best one is the most specific one, that is with longest mro
         return potentials[-1][0]
 
+    def by_schema(self, schema, is_draft):
+        for rec in self.records:
+            if is_draft:
+                endpoint = rec.draft
+            else:
+                endpoint = rec.published
+            if schema in endpoint.schema_indices:
+                return endpoint
+        return None
+
 
 class RecordContext:
     def __init__(self, record_pid, record, **kwargs):
