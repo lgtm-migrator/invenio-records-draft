@@ -25,6 +25,7 @@ env:
   - ES_HOST=127.0.0.1
   matrix:
   - REQUIREMENTS=release EXTRAS=all,tests ES=$ES7_DOWNLOAD_URL
+  - REQUIREMENTS=release EXTRAS=all,tests,tests_files ES=$ES7_DOWNLOAD_URL
 
 python:
 - '3.8'

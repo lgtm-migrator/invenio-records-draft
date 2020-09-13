@@ -1,5 +1,5 @@
 from flask_login import current_user
-from invenio_indexer.api import RecordIndexer
+from flask_principal import Permission, RoleNeed
 from invenio_records_rest.utils import allow_all
 from invenio_search import RecordsSearch
 from sample.indexer import RefreshingRecordIndexer
@@ -52,5 +52,11 @@ RECORDS_DRAFT_ENDPOINTS = {
         create_permission_factory_imp=allow_all,
         delete_permission_factory_imp=allow_all,
         update_permission_factory_imp=allow_all,
+        record_class='sample.record:SampleDraftRecord',
+        files=dict(
+            put_file_factory=Permission(RoleNeed('role1')),
+            get_file_factory=Permission(RoleNeed('role1')),
+            delete_file_factory=Permission(RoleNeed('role1')),
+        )
     )
 }

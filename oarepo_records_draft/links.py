@@ -37,10 +37,16 @@ class LinksFactory:
         resp = {}
         for rule, action in self.actions.items():
             try:
-                if action.view_name:
+                view_name = None
+                if hasattr(action, 'view_class'):
+                    view_name = action.view_class.view_name
+                elif hasattr(action, 'view_name'):
+                    view_name = action.view_name
+
+                if view_name:
                     resp[rule] = url_for(
                         'oarepo_records_draft.{0}'.format(
-                            action.view_name.format(self.endpoint.rest_name)
+                            view_name.format(self.endpoint.rest_name)
                         ), pid_value=pid.pid_value, _external=True)
                 else:
                     resp[rule] = url_for(

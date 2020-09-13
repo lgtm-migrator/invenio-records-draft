@@ -9,6 +9,13 @@
     },
     "control_number": {
       "type": "string"
+    },
+    "_bucket": {
+      "type": "string"
+    },
+    "_files": {
+      "type": "object",
+      "additionalProperties": true
     }
   },
   "additionalProperties": false

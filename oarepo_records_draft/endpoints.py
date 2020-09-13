@@ -10,6 +10,7 @@ from invenio_pidstore.models import PersistentIdentifier
 from invenio_records_rest.utils import deny_all, check_elasticsearch, allow_all
 from invenio_search import current_search
 
+from oarepo_records_draft.actions.files import FileResource, FileListResource
 from oarepo_records_draft.links import PublishedLinksFactory, DraftLinksFactory
 from oarepo_records_draft.record import DraftRecordMixin
 from oarepo_records_draft.types import RecordEndpointConfiguration, DraftManagedRecords, \
@@ -200,6 +201,13 @@ def setup_draft_endpoint(app, published_code, draft_code, published, draft):
     extra_draft['actions'] = draft.pop('actions', {})
     extra_published['actions'] = published.pop('actions', {})
 
+    if 'files' in published:
+        extra_published['actions'].update(
+            setup_files(published_code, published.pop('files'), published, extra_published))
+
+    if 'files' in draft:
+        extra_draft['actions'].update(setup_files(draft_code, draft.pop('files'), draft, extra_draft))
+
     published['links_factory_imp'] = \
         PublishedLinksFactory(
             published_endpoint,
@@ -265,3 +273,23 @@ def generate_draft_record_class(record_class):
             rc
         ), {}))
     return record_class.split(':')[0] + ':' + draft_name
+
+
+def setup_files(code, files, rest_endpoint, extra):
+    if not FileResource:
+        return {}
+    return {
+        'attachments/<key>': FileResource.as_view(
+            FileResource.view_name.format(code),
+            get_file_factory=files.get('get_file_factory', deny_all),
+            put_file_factory=files.get('put_file_factory', deny_all),
+            delete_file_factory=files.get('delete_file_factory', deny_all),
+            restricted=files.get('restricted', True),
+            as_attachment=files.get('as_attachment', True)
+        ),
+        'attachments': FileListResource.as_view(
+            FileListResource.view_name.format(code),
+            get_file_factory=files.get('get_file_factory', deny_all),
+            serializers = files.get('serializers', None)
+        )
+    }

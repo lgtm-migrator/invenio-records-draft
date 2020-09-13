@@ -18,6 +18,9 @@ tests_require = [
 
 extras_require = {
     'tests': tests_require,
+    'tests_files': [
+        'invenio-files-rest'
+    ]
 }
 
 setup_requires = [

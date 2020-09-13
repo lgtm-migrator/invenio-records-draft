@@ -1,11 +1,10 @@
-import collections
-from collections import namedtuple
 from contextlib import contextmanager
 
 import flask
 import requests
 from flask import current_app
-from flask_principal import Identity, identity_changed
+from flask_login import current_user
+from flask_principal import Identity, identity_changed, UserNeed, RoleNeed, identity_loaded
 from invenio_access import authenticated_user
 from invenio_records_rest.utils import allow_all
 from marshmallow import ValidationError
@@ -24,9 +23,20 @@ def header_links(resp):
 def set_identity(u):
     """Sets identity in flask.g to the user."""
     identity = Identity(u.id)
-    identity.provides.add(authenticated_user)
     identity_changed.send(current_app._get_current_object(), identity=identity)
     assert flask.g.identity.id == u.id
+
+
+@identity_loaded.connect
+def identity_loaded_callback(sender, identity=None, **kwargs):
+    print('Identity loaded', identity, current_user)
+    if not current_user.is_authenticated:
+        return
+
+    identity.provides.add(authenticated_user)
+    identity.provides.add(UserNeed(current_user.id))
+    for r in current_user.roles:
+        identity.provides.add(RoleNeed(r.name))
 
 
 def login(http_client, user):
@@ -109,7 +119,7 @@ def remove_ts(d):
     if not isinstance(d, dict):
         return d
     for k, v in list(d.items()):
-        if k in ('created', 'updated'):
+        if k in ('created', 'updated', '_bucket'):
             del d[k]
         else:
             remove_ts(v)

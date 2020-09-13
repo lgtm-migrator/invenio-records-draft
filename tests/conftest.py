@@ -3,8 +3,10 @@
 import os
 import shutil
 import sys
+import tempfile
 import uuid
 from collections import namedtuple
+from pathlib import Path
 
 import pytest
 from flask import Flask, make_response, url_for, session, current_app
@@ -33,7 +35,7 @@ from sqlalchemy_continuum import make_versioned
 from oarepo_records_draft.ext import RecordsDraft
 from oarepo_records_draft.record import DraftRecordMixin
 from sample.ext import SampleExt
-from sample.record import SampleRecord
+from sample.record import SampleRecord, SampleDraftRecord
 from sqlalchemy_utils import create_database, database_exists
 from tests.helpers import set_identity
 
@@ -99,6 +101,15 @@ def app(base_app):
     base_app.url_map.converters['pid'] = PIDConverter
     SampleExt(base_app)
 
+    try:
+        from invenio_files_rest.ext import InvenioFilesREST
+        from invenio_records_files.ext import InvenioRecordsFiles
+
+        InvenioFilesREST(base_app)
+        InvenioRecordsFiles(base_app)
+    except ImportError:
+        pass
+
     base_app.register_blueprint(invenio_records_rest.views.create_blueprint_from_app(base_app))
 
     principal = Principal(base_app)
@@ -144,8 +155,23 @@ def app(base_app):
         yield base_app
 
 
+@pytest.fixture()
+def files_location(app, db):
+    try:
+        from invenio_files_rest.models import Location
+
+        loc = Location()
+        loc.name = 'test'
+        loc.uri = Path(tempfile.gettempdir()).as_uri()
+        loc.default = True
+        db.session.add(loc)
+        db.session.commit()
+    except ImportError:
+        pass
+
+
 @pytest.yield_fixture()
-def client(app):
+def client(app, files_location):
     """Get test client."""
     with app.test_client() as client:
         print(app.url_map)
@@ -216,12 +242,13 @@ def prepare_es(app, db):
 
 
 @pytest.fixture()
-def published_record(app, db, schemas, mappings, prepare_es):
+def published_record(app, db, prepare_es):
     # let's create a record
     record_uuid = uuid.uuid4()
+    SampleRecord._prepare_schemas()
     data = {
         'title': 'blah',
-        '$schema': schemas['published']
+        '$schema': SampleRecord.PREFERRED_SCHEMA
     }
     recid_minter(record_uuid, data)
     rec = SampleRecord.create(data, id_=record_uuid)
@@ -232,17 +259,14 @@ def published_record(app, db, schemas, mappings, prepare_es):
     return rec
 
 
-class SampleDraftRecord(DraftRecordMixin, SampleRecord):
-    pass
-
-
 @pytest.fixture()
-def draft_record(app, db, schemas, mappings, prepare_es):
+def draft_record(app, db, prepare_es):
     # let's create a record
     draft_uuid = uuid.uuid4()
+    SampleDraftRecord._prepare_schemas()
     data = {
         'title': 'blah',
-        '$schema': schemas['draft'],
+        '$schema': SampleDraftRecord.PREFERRED_SCHEMA,
         'id': '1'
     }
     PersistentIdentifier.create(

@@ -5,6 +5,7 @@ from typing import List, Union
 
 import invenio_indexer.config
 from invenio_base.signals import app_loaded
+from invenio_base.utils import obj_or_import_string
 from invenio_db import db
 from invenio_indexer.api import RecordIndexer
 from invenio_indexer.utils import schema_to_index
@@ -29,6 +30,9 @@ logger = logging.getLogger(__name__)
 def setup_indexer(app):
     if app.config['INDEXER_RECORD_TO_INDEX'] == invenio_indexer.config.INDEXER_RECORD_TO_INDEX:
         app.config['INDEXER_RECORD_TO_INDEX'] = 'oarepo_records_draft.record.record_to_index'
+        # in case it has already been used
+        app.extensions['invenio-indexer'].record_to_index = \
+            obj_or_import_string('oarepo_records_draft.record.record_to_index')
 
 
 class RecordsDraftState:
