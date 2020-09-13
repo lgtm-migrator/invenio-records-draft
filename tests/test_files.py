@@ -4,14 +4,13 @@ import pytest
 def can_import_files():
     try:
         import invenio_records_files
+        import invenio_files_rest
         return False
     except:
         return True
 
 
-pytestmark = pytest.mark.skipif(can_import_files(), reason="No invenio files imported")
-
-
+@pytest.mark.skipif(can_import_files(), reason="Running without invenio files")
 def test_upload_links(app, db, client, draft_record):
     resp = client.get('/draft/records/1')
     assert resp.status_code == 200
@@ -21,6 +20,7 @@ def test_upload_links(app, db, client, draft_record):
     }
 
 
+@pytest.mark.skipif(can_import_files(), reason="Running without invenio files")
 def test_upload_attachment_not_authenticated(app, db, client, draft_record):
     resp = client.put('/draft/records/1/attachments/test.txt', data=b'test', headers={
         'Content-Type': 'text/plain'
@@ -28,6 +28,7 @@ def test_upload_attachment_not_authenticated(app, db, client, draft_record):
     assert resp.status_code == 401
 
 
+@pytest.mark.skipif(can_import_files(), reason="Running without invenio files")
 def test_rest_attachment_authenticated(app, db, client, draft_record, test_users):
     # create
 
