@@ -37,7 +37,7 @@ def test_endpoints(app):
         'links_factory_imp': 'PublishedLinksFactory'
     }
     assert dict_to_test(record.draft.rest) == {
-        'record_class': 'sample.record:SampleRecordDraft',
+        'record_class': 'sample.record:SampleDraftRecord',
         'default_endpoint_prefix': True,
         'default_media_type': 'application/json',
         'max_result_window': 10000,
@@ -60,7 +60,7 @@ def test_endpoints(app):
         'read_permission_factory_imp': 'check_elasticsearch',
         'pid_type': 'drecid',
         'list_route': '/draft/records/',
-        'item_route': '/draft/records/<pid(drecid,record_class="sample.record:SampleRecordDraft"):pid_value>',
+        'item_route': '/draft/records/<pid(drecid,record_class="sample.record:SampleDraftRecord"):pid_value>',
         'pid_fetcher': 'drecid_fetcher',
         'pid_minter': 'drecid_minter',
         'search_index': 'draft-sample',

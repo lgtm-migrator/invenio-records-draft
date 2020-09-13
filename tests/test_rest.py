@@ -11,7 +11,8 @@ def test_draft_create(app, db, client, prepare_es, test_users):
     assert remove_ts(resp) == {
         "id": "1",
         "links": {
-            "self": "http://localhost:5000/draft/records/1"
+            "self": "http://localhost:5000/draft/records/1",
+            'attachments': 'http://localhost:5000/draft/records/1/attachments'
         },
         "metadata": {
             "$schema": "https://localhost:5000/schemas/sample/sample-v1.0.0.json",
@@ -40,7 +41,10 @@ def test_draft_create(app, db, client, prepare_es, test_users):
             'hits': [
                 {
                     'id': '1',
-                    'links': {'self': 'http://localhost:5000/draft/records/1'},
+                    'links': {
+                        'self': 'http://localhost:5000/draft/records/1',
+                        'attachments': 'http://localhost:5000/draft/records/1/attachments'
+                    },
                     'metadata': {
                         '$schema': 'https://localhost:5000/schemas/sample/sample-v1.0.0.json',
                         'control_number': '1',
@@ -74,7 +78,10 @@ def test_draft_create(app, db, client, prepare_es, test_users):
             'hits': [
                 {
                     'id': '1',
-                    'links': {'self': 'http://localhost:5000/draft/records/1'},
+                    'links': {
+                        'self': 'http://localhost:5000/draft/records/1',
+                        'attachments': 'http://localhost:5000/draft/records/1/attachments'
+                    },
                     'metadata': {
                         '$schema': 'https://localhost:5000/schemas/sample/sample-v1.0.0.json',
                         'control_number': '1',
@@ -104,7 +111,8 @@ def test_draft_create(app, db, client, prepare_es, test_users):
         'id': '1',
         'links': {
             'self': 'http://localhost:5000/draft/records/1',
-            'publish': 'http://localhost:5000/draft/records/1/publish'
+            'publish': 'http://localhost:5000/draft/records/1/publish',
+            'attachments': 'http://localhost:5000/draft/records/1/attachments'
         },
         'metadata': {
             '$schema': 'https://localhost:5000/schemas/sample/sample-v1.0.0.json',
