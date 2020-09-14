@@ -1,3 +1,5 @@
+from invenio_base.utils import obj_or_import_string
+
 try:
 
     from functools import wraps
@@ -13,12 +15,18 @@ try:
     from invenio_files_rest.signals import file_uploaded, file_downloaded, file_deleted
     from invenio_files_rest.serializer import json_serializer
 
+    from oarepo_records_draft.signals import attachment_uploaded, attachment_deleted, attachment_downloaded
+
 
     def apply_permission(perm_or_factory):
+        cached_perm_or_factory = []
+
         def func(*args, **kwargs):
-            if callable(perm_or_factory):
-                return perm_or_factory(*args, **kwargs)
-            return perm_or_factory
+            if not cached_perm_or_factory:
+                cached_perm_or_factory.append(obj_or_import_string(perm_or_factory))
+            if callable(cached_perm_or_factory[0]):
+                return cached_perm_or_factory[0](*args, **kwargs)
+            return cached_perm_or_factory[0]
 
         return func
 
@@ -83,7 +91,9 @@ try:
             record.commit()
             db.session.commit()
             ret = jsonify(record.files[key].dumps())
-            file_uploaded.send(record.files[key].get_version())
+            version = record.files[key].get_version()
+            file_uploaded.send(version)
+            attachment_uploaded.send(version, record=record, file=record.files[key])
             ret.status_code = 201
             return ret
 
@@ -96,6 +106,7 @@ try:
             record.commit()
             db.session.commit()
             file_deleted.send(deleted_record_version)
+            attachment_deleted.send(deleted_record_version, record=record, file=deleted_record)
             ret = jsonify(deleted_record.dumps())
             ret.status_code = 200
             return ret
@@ -106,6 +117,7 @@ try:
             obj = record.files[key]
             obj = obj.get_version()
             file_downloaded.send(obj)
+            attachment_downloaded.send(obj, record=record, file=record.files[key])
             return obj.send_file(restricted=self.call(self.restricted, record, obj, key),
                                  as_attachment=self.call(self.as_attachment, record, obj, key))
 

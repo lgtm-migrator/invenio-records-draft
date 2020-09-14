@@ -107,3 +107,30 @@ A notification called after the records have been prepared for editing
 :param records: a list of tuples (published_record, draft_record). The published
 record is marked as is.
 """
+
+attachment_uploaded = _signals.signal('attachment_uploaded')
+"""
+A notification aka rest's file_uploaded but tied to a record
+
+:param sender ObjectVersion 
+:param record attachment's record
+:param file   FileObject on the record
+"""
+
+attachment_downloaded = _signals.signal('attachment_downloaded')
+"""
+A notification aka rest's file_downloaded but tied to a record
+
+:param sender ObjectVersion 
+:param record attachment's record
+:param file   FileObject on the record
+"""
+
+attachment_deleted = _signals.signal('attachment_deleted')
+"""
+A notification aka rest's file_deleted but tied to a record
+
+:param sender ObjectVersion 
+:param record attachment's record
+:param file   FileObject on the record
+"""
