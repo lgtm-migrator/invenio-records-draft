@@ -2,7 +2,7 @@ from invenio_base.utils import obj_or_import_string
 
 try:
 
-    from functools import wraps
+    from functools import wraps, lru_cache
 
     from flask import jsonify, abort
     from flask import request
@@ -18,15 +18,14 @@ try:
     from oarepo_records_draft.signals import attachment_uploaded, attachment_deleted, attachment_downloaded
 
 
+    @lru_cache(maxsize=32)
     def apply_permission(perm_or_factory):
-        cached_perm_or_factory = []
+        perm_or_factory = obj_or_import_string(perm_or_factory)
 
         def func(*args, **kwargs):
-            if not cached_perm_or_factory:
-                cached_perm_or_factory.append(obj_or_import_string(perm_or_factory))
-            if callable(cached_perm_or_factory[0]):
-                return cached_perm_or_factory[0](*args, **kwargs)
-            return cached_perm_or_factory[0]
+            if callable(perm_or_factory):
+                return perm_or_factory(*args, **kwargs)
+            return perm_or_factory
 
         return func
 
