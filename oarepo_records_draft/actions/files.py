@@ -1,4 +1,6 @@
+import six
 from invenio_base.utils import obj_or_import_string
+from werkzeug.utils import import_string
 
 try:
 
@@ -20,7 +22,8 @@ try:
 
     @lru_cache(maxsize=32)
     def apply_permission(perm_or_factory):
-        perm_or_factory = obj_or_import_string(perm_or_factory)
+        if isinstance(perm_or_factory, six.string_types):
+            perm_or_factory = import_string(perm_or_factory)
 
         def func(*args, **kwargs):
             if callable(perm_or_factory):
