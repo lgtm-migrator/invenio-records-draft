@@ -108,6 +108,15 @@ A notification called after the records have been prepared for editing
 record is marked as is.
 """
 
+attachment_before_uploaded = _signals.signal('attachment_uploaded')
+"""
+A notification aka rest's file_uploaded but tied to a record and called before the file object has been created
+
+:param sender ObjectVersion 
+:param record attachment's record
+:param key    created file object key
+"""
+
 attachment_uploaded = _signals.signal('attachment_uploaded')
 """
 A notification aka rest's file_uploaded but tied to a record
@@ -131,6 +140,25 @@ attachment_downloaded = _signals.signal('attachment_downloaded')
 A notification aka rest's file_downloaded but tied to a record
 
 :param sender ObjectVersion 
+:param record attachment's record
+:param file   FileObject on the record
+"""
+
+attachment_before_deleted = _signals.signal('attachment_before_deleted')
+"""
+A notification aka rest's file_deleted but tied to a record and called before the deletion has been run
+
+:param sender attachment's record 
+:param record attachment's record
+:param file   FileObject on the record
+"""
+
+
+attachment_deleted_before_commit = _signals.signal('attachment_deleted_before_commit')
+"""
+A notification aka rest's file_deleted but tied to a record and called before the record has been committed
+
+:param sender attachment's record 
 :param record attachment's record
 :param file   FileObject on the record
 """

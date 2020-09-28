@@ -18,7 +18,8 @@ try:
     from invenio_files_rest.serializer import json_serializer
 
     from oarepo_records_draft.signals import attachment_uploaded, attachment_deleted, attachment_downloaded, \
-    attachment_uploaded_before_commit
+    attachment_uploaded_before_commit, attachment_deleted_before_commit, attachment_before_deleted, \
+    attachment_before_uploaded
 
 
     @lru_cache(maxsize=32)
@@ -91,6 +92,7 @@ try:
         @pass_record
         @need_file_permission('put_file_factory', missing_ok=True)
         def put(self, pid, record, key):
+            attachment_before_uploaded.send(record, record=record, key=key)
             record.files[key] = request.stream
             record.files[key]['mime_type'] = request.mimetype
 
@@ -120,7 +122,9 @@ try:
         def delete(self, pid, record, key):
             deleted_record = record.files[key]
             deleted_record_version = deleted_record.get_version()
+            attachment_before_deleted.send(record, record=record, file=deleted_record)
             del record.files[key]
+            attachment_deleted_before_commit.send(record, record=record, file=deleted_record)
             record.commit()
             db.session.commit()
             file_deleted.send(deleted_record_version)
@@ -175,6 +179,9 @@ try:
             if len(all_files) != 1:
                 abort(400, 'Only one file expected')
             key = all_files[0].filename
+
+            attachment_before_uploaded.send(record, record=record, key=key)
+
             record.files[key] = all_files[0].stream
 
             file_rec = record.files[key]
