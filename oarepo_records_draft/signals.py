@@ -117,6 +117,15 @@ A notification aka rest's file_uploaded but tied to a record
 :param file   FileObject on the record
 """
 
+attachment_uploaded_before_commit = _signals.signal('attachment_uploaded_before_commit')
+"""
+A notification aka rest's file_uploaded but tied to a record and called before the record has been committed
+
+:param sender attachment's record 
+:param record attachment's record
+:param file   FileObject on the record
+"""
+
 attachment_downloaded = _signals.signal('attachment_downloaded')
 """
 A notification aka rest's file_downloaded but tied to a record

@@ -285,11 +285,13 @@ def setup_files(code, files, rest_endpoint, extra):
             put_file_factory=files.get('put_file_factory', deny_all),
             delete_file_factory=files.get('delete_file_factory', deny_all),
             restricted=files.get('restricted', True),
-            as_attachment=files.get('as_attachment', True)
+            as_attachment=files.get('as_attachment', True),
+            endpoint_code=code
         ),
         'attachments': FileListResource.as_view(
             FileListResource.view_name.format(code),
             get_file_factory=files.get('get_file_factory', deny_all),
-            serializers = files.get('serializers', None)
+            serializers = files.get('serializers', None),
+            endpoint_code=code
         )
     }

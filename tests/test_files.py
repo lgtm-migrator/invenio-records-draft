@@ -86,6 +86,14 @@ def test_rest_attachment_authenticated(app, db, client, draft_record, test_users
     assert resp.status_code == 200
     assert resp.data == b'test'
 
+    # modify metadata
+    resp = client.post('/draft/records/1/attachments/test.txt', data={
+        'test_md': 'hello'
+    })
+    assert resp.status_code == 200
+    assert resp.json['test_md'] == 'hello'
+    uploaded_file = resp.json
+
     # delete
 
     client.get('/test/logout')
