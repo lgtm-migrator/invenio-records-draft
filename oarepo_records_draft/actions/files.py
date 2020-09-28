@@ -17,7 +17,8 @@ try:
     from invenio_files_rest.signals import file_uploaded, file_downloaded, file_deleted
     from invenio_files_rest.serializer import json_serializer
 
-    from oarepo_records_draft.signals import attachment_uploaded, attachment_deleted, attachment_downloaded
+    from oarepo_records_draft.signals import attachment_uploaded, attachment_deleted, attachment_downloaded, \
+    attachment_uploaded_before_commit
 
 
     @lru_cache(maxsize=32)
