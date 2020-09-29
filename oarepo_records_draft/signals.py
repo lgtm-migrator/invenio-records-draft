@@ -45,6 +45,14 @@ A notification called before a record is published
 :param collected_records: All collected records
 """
 
+after_publish_record = _signals.signal('before_publish_record')
+"""
+A notification called after a record is published
+
+:param published_record
+:param published_pid
+"""
+
 after_publish = _signals.signal('after_publish')
 """
 A notification called after the records have been published
@@ -115,6 +123,8 @@ A notification aka rest's file_uploaded but tied to a record and called before t
 :param sender ObjectVersion 
 :param record attachment's record
 :param key    created file object key
+:param files  FileIterator on the record
+:param pid    PersistentIdentifier of the record
 """
 
 attachment_uploaded = _signals.signal('attachment_uploaded')
@@ -124,6 +134,8 @@ A notification aka rest's file_uploaded but tied to a record
 :param sender ObjectVersion 
 :param record attachment's record
 :param file   FileObject on the record
+:param files  FileIterator on the record
+:param pid    PersistentIdentifier of the record
 """
 
 attachment_uploaded_before_commit = _signals.signal('attachment_uploaded_before_commit')
@@ -133,6 +145,8 @@ A notification aka rest's file_uploaded but tied to a record and called before t
 :param sender attachment's record 
 :param record attachment's record
 :param file   FileObject on the record
+:param files  FileIterator on the record
+:param pid    PersistentIdentifier of the record
 """
 
 attachment_downloaded = _signals.signal('attachment_downloaded')
@@ -142,6 +156,7 @@ A notification aka rest's file_downloaded but tied to a record
 :param sender ObjectVersion 
 :param record attachment's record
 :param file   FileObject on the record
+:param pid    PersistentIdentifier of the record
 """
 
 attachment_before_deleted = _signals.signal('attachment_before_deleted')
@@ -151,6 +166,7 @@ A notification aka rest's file_deleted but tied to a record and called before th
 :param sender attachment's record 
 :param record attachment's record
 :param file   FileObject on the record
+:param pid    PersistentIdentifier of the record
 """
 
 
@@ -161,6 +177,7 @@ A notification aka rest's file_deleted but tied to a record and called before th
 :param sender attachment's record 
 :param record attachment's record
 :param file   FileObject on the record
+:param pid    PersistentIdentifier of the record
 """
 
 attachment_deleted = _signals.signal('attachment_deleted')
@@ -170,4 +187,5 @@ A notification aka rest's file_deleted but tied to a record
 :param sender ObjectVersion 
 :param record attachment's record
 :param file   FileObject on the record
+:param pid    PersistentIdentifier of the record
 """

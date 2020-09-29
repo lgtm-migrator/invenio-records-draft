@@ -20,7 +20,7 @@ from oarepo_records_draft.types import DraftManagedRecords
 from .exceptions import InvalidRecordException
 from .signals import collect_records, CollectAction, check_can_publish, before_publish, after_publish, check_can_edit, \
     before_edit, after_edit, check_can_unpublish, before_unpublish, after_unpublish, before_publish_record, \
-    before_unpublish_record
+    before_unpublish_record, after_publish_record
 from .types import RecordContext, Endpoints
 from .views import register_blueprint
 
@@ -272,11 +272,15 @@ class RecordsDraftState:
                                              errors=metadata['oarepo:validity']['errors'])
             del metadata['oarepo:validity']
 
-        before_publish_record.send(draft_record, metadata=metadata, record=record_context,
-                                   collected_records=collected_records)
         try:
             published_pid = PersistentIdentifier.get(published_pid_type, draft_pid.pid_value)
+        except PIDDoesNotExistError:
+            published_pid = None
 
+        before_publish_record.send(draft_record, metadata=metadata, record=record_context,
+                                   collected_records=collected_records)
+
+        if published_pid:
             if published_pid.status == PIDStatus.DELETED:
                 # the draft is deleted, resurrect it
                 # change the pid to registered
@@ -297,8 +301,6 @@ class RecordsDraftState:
             raise NotImplementedError('Can not unpublish record to draft record '
                                       'with pid status %s. Only registered or deleted '
                                       'statuses are implemented', published_pid.status)
-        except PIDDoesNotExistError:
-            pass
 
         # create a new draft record. Do not call minter as the pid value will be the
         # same as the pid value of the published record
@@ -308,6 +310,11 @@ class RecordsDraftState:
                                                     pid_value=draft_pid.pid_value,
                                                     status=PIDStatus.REGISTERED,
                                                     object_type='rec', object_uuid=id)
+
+        after_publish_record.send(draft_record,
+                                  published_record=published_record,
+                                  published_pid=published_pid,
+                                  collected_records=collected_records)
         return published_record, published_pid
 
     def _update_published_record(self, published_pid, metadata,
@@ -330,6 +337,9 @@ class RecordsDraftState:
                                published_pid.pid_type)
 
         published_record.commit()
+        after_publish_record.send(published_record,
+                                  published_record=published_record,
+                                  published_pid=published_pid)
 
         return published_record, published_pid
 

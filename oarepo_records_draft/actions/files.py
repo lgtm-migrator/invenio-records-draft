@@ -1,12 +1,12 @@
 import six
-from invenio_base.utils import obj_or_import_string
+from invenio_pidstore.models import PersistentIdentifier
 from werkzeug.utils import import_string
 
 try:
 
     from functools import wraps, lru_cache
 
-    from flask import jsonify, abort
+    from flask import jsonify, abort, url_for
     from flask import request
     from flask.views import MethodView
     from invenio_db import db
@@ -97,20 +97,11 @@ try:
         @pass_record
         @need_file_permission('put_file_factory', missing_ok=True)
         def put(self, pid, record, key):
-            attachment_before_uploaded.send(record, record=record, key=key)
-            record.files[key] = request.stream
-            record.files[key]['mime_type'] = request.mimetype
 
-            attachment_uploaded_before_commit.send(record, record=record, file=record.files[key])
-
-            record.commit()
-            db.session.commit()
-            ret = jsonify(record.files[key].dumps())
-            version = record.files[key].get_version()
-            file_uploaded.send(version)
-            attachment_uploaded.send(version, record=record, file=record.files[key])
-            ret.status_code = 201
-            return ret
+            return create_record_file(pid, record,
+                                      key, request.stream,
+                                      request.mimetype,
+                                      {}, self.endpoint_code)
 
         @pass_record
         @need_file_permission('put_file_factory', missing_ok=True)
@@ -127,13 +118,13 @@ try:
         def delete(self, pid, record, key):
             deleted_record = record.files[key]
             deleted_record_version = deleted_record.get_version()
-            attachment_before_deleted.send(record, record=record, file=deleted_record)
+            attachment_before_deleted.send(record, record=record, file=deleted_record, pid=pid)
             del record.files[key]
-            attachment_deleted_before_commit.send(record, record=record, file=deleted_record)
+            attachment_deleted_before_commit.send(record, record=record, file=deleted_record, pid=pid)
             record.commit()
             db.session.commit()
             file_deleted.send(deleted_record_version)
-            attachment_deleted.send(deleted_record_version, record=record, file=deleted_record)
+            attachment_deleted.send(deleted_record_version, record=record, file=deleted_record, pid=pid)
             ret = jsonify(deleted_record.dumps())
             ret.status_code = 200
             return ret
@@ -144,7 +135,7 @@ try:
             obj = record.files[key]
             obj = obj.get_version(obj.obj.version_id)  # get the explicit version in record
             file_downloaded.send(obj)
-            attachment_downloaded.send(obj, record=record, file=record.files[key])
+            attachment_downloaded.send(obj, record=record, file=record.files[key], pid=pid)
             return obj.send_file(restricted=self.call(self.restricted, record, obj, key),
                                  as_attachment=self.call(self.as_attachment, record, obj, key))
 
@@ -182,35 +173,44 @@ try:
 
         @pass_record
         @need_file_permission('put_file_factory', missing_ok=True)
-        def post(self, pid, record):
+        def post(self, pid: PersistentIdentifier, record):
             all_files = [v for v in request.files.values()]
             if len(all_files) != 1:
                 abort(400, 'Only one file expected')
 
-            key = request.form['key']
+            return create_record_file(pid, record,
+                                      request.form['key'], all_files[0].stream,
+                                      all_files[0].content_type,
+                                      request.form, self.endpoint_code)
 
-            attachment_before_uploaded.send(record, record=record, key=key)
 
-            record.files[key] = all_files[0].stream
+    def create_record_file(pid, record, key, stream, content_type, props, endpoint_code):
 
-            file_rec = record.files[key]
-            for k, v in request.form.items():
-                if k == 'key':
-                    continue
-                file_rec[k] = v
-            file_rec['mime_type'] = all_files[0].content_type
+        files = record.files
+        attachment_before_uploaded.send(record, record=record, key=key, files=files, pid=pid)
 
-            attachment_uploaded_before_commit.send(record, record=record, file=record.files[key])
+        files[key] = stream
 
-            record.commit()
-            db.session.commit()
-            version = record.files[key].get_version()
-            file_uploaded.send(version)
-            attachment_uploaded.send(version, record=record, file=record.files[key])
+        file_rec = record.files[key]
+        for k, v in props.items():
+            if k == 'key':
+                continue
+            file_rec[k] = v
+        file_rec['mime_type'] = content_type
+        file_rec['url'] = url_for('oarepo_records_draft.' + FileResource.view_name.format(endpoint_code),
+                                  pid_value=pid.pid_value, key=key, _external=True)
 
-            ret = jsonify(record.files[key].dumps())
-            ret.status_code = 201
-            return ret
+        attachment_uploaded_before_commit.send(record, record=record, file=record.files[key], files=files, pid=pid)
+
+        files.flush()
+        record.commit()
+        db.session.commit()
+        version = record.files[key].get_version()
+        file_uploaded.send(version)
+        attachment_uploaded.send(version, record=record, file=files[key], files=files, pid=pid)
+        ret = jsonify(record.files[key].dumps())
+        ret.status_code = 201
+        return ret
 
 except:
     FileResource = None

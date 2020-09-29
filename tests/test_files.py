@@ -52,6 +52,7 @@ def test_rest_attachment_authenticated(app, db, client, draft_record, test_users
     assert 'file_id' in uploaded_file
     assert 'version_id' in uploaded_file
     assert uploaded_file['size'] == 4
+    assert uploaded_file['url'] == 'http://localhost:5000/draft/records/1/attachments/test.txt'
 
     # listing
 
