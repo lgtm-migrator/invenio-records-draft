@@ -137,6 +137,17 @@ A notification aka rest's file_uploaded but tied to a record
 :param files  FileIterator on the record
 :param pid    PersistentIdentifier of the record
 """
+attachment_uploaded_before_flush = _signals.signal('attachment_uploaded_before_flush')
+"""
+A notification aka rest's file_uploaded but tied to a record and called before the record files 
+have been flushed to record metadata
+
+:param sender attachment's record 
+:param record attachment's record
+:param file   FileObject on the record
+:param files  FileIterator on the record
+:param pid    PersistentIdentifier of the record
+"""
 
 attachment_uploaded_before_commit = _signals.signal('attachment_uploaded_before_commit')
 """

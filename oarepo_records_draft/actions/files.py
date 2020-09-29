@@ -18,8 +18,8 @@ try:
     from invenio_files_rest.serializer import json_serializer
 
     from oarepo_records_draft.signals import attachment_uploaded, attachment_deleted, attachment_downloaded, \
-        attachment_uploaded_before_commit, attachment_deleted_before_commit, attachment_before_deleted, \
-        attachment_before_uploaded
+    attachment_uploaded_before_commit, attachment_deleted_before_commit, attachment_before_deleted, \
+    attachment_before_uploaded, attachment_uploaded_before_flush
 
 
     @lru_cache(maxsize=32)
@@ -200,9 +200,9 @@ try:
         file_rec['url'] = url_for('oarepo_records_draft.' + FileResource.view_name.format(endpoint_code),
                                   pid_value=pid.pid_value, key=key, _external=True)
 
-        attachment_uploaded_before_commit.send(record, record=record, file=record.files[key], files=files, pid=pid)
-
+        attachment_uploaded_before_flush.send(record, record=record, file=record.files[key], files=files, pid=pid)
         files.flush()
+        attachment_uploaded_before_commit.send(record, record=record, file=record.files[key], files=files, pid=pid)
         record.commit()
         db.session.commit()
         version = record.files[key].get_version()
