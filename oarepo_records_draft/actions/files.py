@@ -18,8 +18,8 @@ try:
     from invenio_files_rest.serializer import json_serializer
 
     from oarepo_records_draft.signals import attachment_uploaded, attachment_deleted, attachment_downloaded, \
-    attachment_uploaded_before_commit, attachment_deleted_before_commit, attachment_before_deleted, \
-    attachment_before_uploaded
+        attachment_uploaded_before_commit, attachment_deleted_before_commit, attachment_before_deleted, \
+        attachment_before_uploaded
 
 
     @lru_cache(maxsize=32)
@@ -63,7 +63,12 @@ try:
                 # FIXME use context instead
                 request._methodview = self
 
-                key = kwargs['key']
+                key = kwargs.get('key', None)
+                if key is None:
+                    # try to get the key from the payload
+                    key = request.form.get('key', None)
+                    if not key:
+                        abort('No file key passed')
                 verify_file_permission(permission_factory, record, key, missing_ok)
 
                 return f(self, record=record, *args, **kwargs)
@@ -153,7 +158,9 @@ try:
 
         view_name = '{0}_attachments'
 
-        def __init__(self, get_file_factory=None, serializers=None, endpoint_code=None, *args, **kwargs):
+        def __init__(self, get_file_factory=None, put_file_factory=None,
+                     serializers=None, endpoint_code=None, *args,
+                     **kwargs):
             super().__init__(
                 *args,
                 serializers=serializers or {
@@ -163,6 +170,7 @@ try:
                 **kwargs
             )
             self.get_file_factory = get_file_factory
+            self.put_file_factory = put_file_factory
             self.endpoint_code = endpoint_code
 
         @pass_record
@@ -178,16 +186,19 @@ try:
             all_files = [v for v in request.files.values()]
             if len(all_files) != 1:
                 abort(400, 'Only one file expected')
-            key = all_files[0].filename
+
+            key = request.form['key']
 
             attachment_before_uploaded.send(record, record=record, key=key)
 
             record.files[key] = all_files[0].stream
 
             file_rec = record.files[key]
-            file_rec['mime_type'] = request.mimetype
             for k, v in request.form.items():
+                if k == 'key':
+                    continue
                 file_rec[k] = v
+            file_rec['mime_type'] = all_files[0].content_type
 
             attachment_uploaded_before_commit.send(record, record=record, file=record.files[key])
 
