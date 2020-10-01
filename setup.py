@@ -12,7 +12,7 @@ install_requires = [
 ]
 
 tests_require = [
-    'pytest-invenio<1.4.0',         # hack
+    'pytest-invenio[docs]==1.3.4',         # hack
     'oarepo',
     # 'oarepo[tests]',
     'pytest-cov'
