@@ -286,7 +286,7 @@ def setup_files(code, files, rest_endpoint, extra):
             extra=extra
         ))
     if FileResource:
-        endpoints['attachments/<key>'] = FileResource.as_view(
+        endpoints['files/<key>'] = FileResource.as_view(
                 FileResource.view_name.format(code),
                 get_file_factory=files.get('get_file_factory', deny_all),
                 put_file_factory=files.get('put_file_factory', deny_all),
@@ -295,7 +295,7 @@ def setup_files(code, files, rest_endpoint, extra):
                 as_attachment=files.get('as_attachment', True),
                 endpoint_code=code
             )
-        endpoints['attachments'] = FileListResource.as_view(
+        endpoints['files'] = FileListResource.as_view(
                 FileListResource.view_name.format(code),
                 get_file_factory=files.get('get_file_factory', deny_all),
                 put_file_factory=files.get('put_file_factory', deny_all),

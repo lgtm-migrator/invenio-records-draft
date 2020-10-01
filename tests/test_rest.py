@@ -12,7 +12,7 @@ def test_draft_create(app, db, client, prepare_es, test_users):
         "id": "1",
         "links": {
             "self": "http://localhost:5000/draft/records/1",
-            'attachments': 'http://localhost:5000/draft/records/1/attachments'
+            'files': 'http://localhost:5000/draft/records/1/files'
         },
         "metadata": {
             "$schema": "https://localhost:5000/schemas/sample/sample-v1.0.0.json",
@@ -43,7 +43,7 @@ def test_draft_create(app, db, client, prepare_es, test_users):
                     'id': '1',
                     'links': {
                         'self': 'http://localhost:5000/draft/records/1',
-                        'attachments': 'http://localhost:5000/draft/records/1/attachments'
+                        'files': 'http://localhost:5000/draft/records/1/files'
                     },
                     'metadata': {
                         '$schema': 'https://localhost:5000/schemas/sample/sample-v1.0.0.json',
@@ -80,7 +80,7 @@ def test_draft_create(app, db, client, prepare_es, test_users):
                     'id': '1',
                     'links': {
                         'self': 'http://localhost:5000/draft/records/1',
-                        'attachments': 'http://localhost:5000/draft/records/1/attachments'
+                        'files': 'http://localhost:5000/draft/records/1/files'
                     },
                     'metadata': {
                         '$schema': 'https://localhost:5000/schemas/sample/sample-v1.0.0.json',
@@ -112,7 +112,7 @@ def test_draft_create(app, db, client, prepare_es, test_users):
         'links': {
             'self': 'http://localhost:5000/draft/records/1',
             'publish': 'http://localhost:5000/draft/records/1/publish',
-            'attachments': 'http://localhost:5000/draft/records/1/attachments'
+            'files': 'http://localhost:5000/draft/records/1/files'
         },
         'metadata': {
             '$schema': 'https://localhost:5000/schemas/sample/sample-v1.0.0.json',

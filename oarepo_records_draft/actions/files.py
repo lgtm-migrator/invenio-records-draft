@@ -19,15 +19,17 @@ try:
     from invenio_records_rest.views import pass_record
     from invenio_rest import ContentNegotiatedMethodView
 
-    from invenio_files_rest.signals import file_uploaded, file_downloaded, file_deleted
+    from invenio_files_rest.signals import file_uploaded as rest_file_uploaded, \
+        file_downloaded as rest_file_downloaded, \
+        file_deleted as rest_file_deleted
     from invenio_files_rest.serializer import json_serializer
 
-    from oarepo_records_draft.signals import attachment_uploaded, attachment_deleted, attachment_downloaded, \
-        attachment_uploaded_before_commit, attachment_deleted_before_commit, attachment_before_deleted, \
-        attachment_before_uploaded, attachment_uploaded_before_flush, \
-        attachment_before_metadata_modified, attachment_metadata_modified_before_flush, \
-        attachment_after_metadata_modified, \
-        attachment_metadata_modified_before_commit, attachment_deleted_before_flush
+    from oarepo_records_draft.signals import file_uploaded, file_deleted, file_downloaded, \
+        file_uploaded_before_commit, file_deleted_before_commit, file_before_deleted, \
+        file_before_uploaded, file_uploaded_before_flush, \
+        file_before_metadata_modified, file_metadata_modified_before_flush, \
+        file_after_metadata_modified, \
+        file_metadata_modified_before_commit, file_deleted_before_flush
 
 
     @lru_cache(maxsize=32)
@@ -87,7 +89,7 @@ try:
 
 
     class FileResource(MethodView):
-        view_name = '{0}_attachment'
+        view_name = '{0}_file'
 
         def __init__(self, get_file_factory=None, put_file_factory=None, delete_file_factory=None,
                      restricted=True, as_attachment=True, endpoint_code=None, *args, **kwargs):
@@ -119,19 +121,19 @@ try:
             metadata = {}
             metadata.update(request.form or {})
             metadata.update(request.json or {})
-            attachment_before_metadata_modified.send(record, record=record, file=file_rec, pid=pid, files=files,
+            file_before_metadata_modified.send(record, record=record, file=file_rec, pid=pid, files=files,
                                                      metadata=metadata)
             for k, v in metadata.items():
                 file_rec[k] = v
 
-            attachment_metadata_modified_before_flush.send(record, record=record, file=file_rec, pid=pid, files=files,
+            file_metadata_modified_before_flush.send(record, record=record, file=file_rec, pid=pid, files=files,
                                                            metadata=metadata)
             files.flush()
-            attachment_metadata_modified_before_commit.send(record, record=record, file=file_rec, pid=pid, files=files,
+            file_metadata_modified_before_commit.send(record, record=record, file=file_rec, pid=pid, files=files,
                                                             metadata=metadata)
             record.commit()
             db.session.commit()
-            attachment_after_metadata_modified.send(record, record=record, file=file_rec, pid=pid, files=files,
+            file_after_metadata_modified.send(record, record=record, file=file_rec, pid=pid, files=files,
                                                     metadata=metadata)
             current_drafts.indexer_for_record(record).index(record)
             return jsonify(record.files[key].dumps())
@@ -142,16 +144,16 @@ try:
             files = record.files
             deleted_record = files[key]
             deleted_record_version = deleted_record.get_version()
-            attachment_before_deleted.send(record, record=record, files=files, file=deleted_record, pid=pid)
+            file_before_deleted.send(record, record=record, files=files, file=deleted_record, pid=pid)
             del files[key]
-            attachment_deleted_before_flush.send(record, record=record, files=files, file=deleted_record, pid=pid)
+            file_deleted_before_flush.send(record, record=record, files=files, file=deleted_record, pid=pid)
             files.flush()
-            attachment_deleted_before_commit.send(record, record=record, files=files, file=deleted_record, pid=pid)
+            file_deleted_before_commit.send(record, record=record, files=files, file=deleted_record, pid=pid)
             record.commit()
             db.session.commit()
             current_drafts.indexer_for_record(record).index(record)
-            file_deleted.send(deleted_record_version)
-            attachment_deleted.send(deleted_record_version, record=record, files=files, file=deleted_record, pid=pid)
+            rest_file_deleted.send(deleted_record_version)
+            file_deleted.send(deleted_record_version, record=record, files=files, file=deleted_record, pid=pid)
             ret = jsonify(deleted_record.dumps())
             ret.status_code = 200
             return ret
@@ -164,8 +166,8 @@ try:
             obj = obj.get_version(obj.obj.version_id)  # get the explicit version in record
             if obj.file.checksum is None:
                 abort(404, 'File is not uploaded yet')
-            file_downloaded.send(obj)
-            attachment_downloaded.send(obj, record=record, files=files, file=obj, pid=pid)
+            rest_file_downloaded.send(obj)
+            file_downloaded.send(obj, record=record, files=files, file=obj, pid=pid)
             return obj.send_file(restricted=self.call(self.restricted, record, obj, key),
                                  as_attachment=self.call(self.as_attachment, record, obj, key))
 
@@ -177,7 +179,7 @@ try:
 
     class FileListResource(ContentNegotiatedMethodView):
 
-        view_name = '{0}_attachments'
+        view_name = '{0}_files'
 
         def __init__(self, get_file_factory=None, put_file_factory=None,
                      serializers=None, endpoint_code=None, *args,
@@ -217,7 +219,7 @@ try:
     def create_record_file(pid, record, key, stream, content_type, props, endpoint_code):
 
         files = record.files
-        attachment_before_uploaded.send(record, record=record, key=key, files=files, pid=pid)
+        file_before_uploaded.send(record, record=record, key=key, files=files, pid=pid)
 
         for uploader in current_drafts.uploaders:
             result = uploader(record=record, key=key, files=files, pid=pid, request=request,
@@ -240,15 +242,15 @@ try:
         file_rec['url'] = url_for('oarepo_records_draft.' + FileResource.view_name.format(endpoint_code),
                                   pid_value=pid.pid_value, key=key, _external=True)
 
-        attachment_uploaded_before_flush.send(record, record=record, file=record.files[key], files=files, pid=pid)
+        file_uploaded_before_flush.send(record, record=record, file=record.files[key], files=files, pid=pid)
         files.flush()
-        attachment_uploaded_before_commit.send(record, record=record, file=record.files[key], files=files, pid=pid)
+        file_uploaded_before_commit.send(record, record=record, file=record.files[key], files=files, pid=pid)
         record.commit()
         db.session.commit()
         current_drafts.indexer_for_record(record).index(record)
         version = record.files[key].get_version()
-        file_uploaded.send(version)
-        attachment_uploaded.send(version, record=record, file=files[key], files=files, pid=pid)
+        rest_file_uploaded.send(version)
+        file_uploaded.send(version, record=record, file=files[key], files=files, pid=pid)
         ret = jsonify(response_creator())
         ret.status_code = 201
         return ret
