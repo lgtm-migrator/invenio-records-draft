@@ -23,7 +23,7 @@ class TestResource(MethodView):
         return jsonify({'status': 'ok'})
 
 
-def extras(code, files, rest_endpoint, extra):
+def extras(code, files, rest_endpoint, extra, is_draft, **kwargs):
     return {
         'files/_test': TestResource.as_view(
             TestResource.view_name.format(endpoint=code)

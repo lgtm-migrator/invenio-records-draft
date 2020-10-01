@@ -204,10 +204,10 @@ def setup_draft_endpoint(app, published_code, draft_code, published, draft):
 
     if 'files' in published:
         extra_published['actions'].update(
-            setup_files(published_code, published.pop('files'), published, extra_published))
+            setup_files(published_code, published.pop('files'), published, extra_published, is_draft=False))
 
     if 'files' in draft:
-        extra_draft['actions'].update(setup_files(draft_code, draft.pop('files'), draft, extra_draft))
+        extra_draft['actions'].update(setup_files(draft_code, draft.pop('files'), draft, extra_draft, is_draft=True))
 
     published['links_factory_imp'] = \
         PublishedLinksFactory(
@@ -276,14 +276,15 @@ def generate_draft_record_class(record_class):
     return record_class.split(':')[0] + ':' + draft_name
 
 
-def setup_files(code, files, rest_endpoint, extra):
+def setup_files(code, files, rest_endpoint, extra, is_draft):
     endpoints = {}
-    for extra_endpoint_handler in current_drafts.extra_endpoints:
+    for extra_endpoint_handler in current_drafts.extra_actions:
         endpoints.update(extra_endpoint_handler(
             code=code,
             files=files,
             rest_endpoint=rest_endpoint,
-            extra=extra
+            extra=extra,
+            is_draft=is_draft
         ) or {})
     if FileResource:
         endpoints['files/<key>'] = FileResource.as_view(

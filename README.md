@@ -297,6 +297,78 @@ $ curl --request POST \
 After this action, the published record is deleted (and says 410 gone) and draft record is created.
 You can delete the draft record if desired or update and publish it again.
 
+### Files
+
+If ``invenio-files-rest`` is installed, the configuration of ``RECORDS_DRAFT_ENDPOINTS``
+might contain a ``file`` section:
+
+```python
+RECORDS_DRAFT_ENDPOINTS = {
+    'recid': dict(
+        draft='drecid',
+        # ...
+    ),
+    'drecid': dict(
+        # ...
+        files=dict(
+            put_file_factory=Permission(RoleNeed('role1')),
+            get_file_factory=Permission(RoleNeed('role1')),
+            delete_file_factory=Permission(RoleNeed('role1')),
+            # restricted=False,
+            # as_attachment=False
+        )
+    )
+}
+```
+
+Permission factories have a signature:
+
+```
+permission_factory(view: [oarepo_records_draft.actions.files.FileResource|FileListResource],
+                   record: Record, 
+                   key: str, 
+                   file_object: invenio_record_files.api.FileObject)
+```
+
+and returns an object with ``can()`` method.
+
+Adding the factory creates urls in the same manner as ``invenio-records-rest``:
+
+```
+/api/<records or draft records>/<recid>/files
+    GET  ... lists all the files uploaded to a record
+    POST<form data with a file> ... uploads a file and associates metadata with the file
+
+/api/<records>/<recid>/files/<key>
+   GET  ... downloads file with the given key
+   PUT  ... creates or updates file at the given key, payload is the file stream
+   DELETE ... removes file at the given key 
+```
+
+
+### Extra REST actions
+
+You can add extra rest actions for each resource that are registered within draft blueprint. 
+They can be registered either globally via entry points (see python api later) 
+or locally in the configuration:
+
+```python
+RECORDS_DRAFT_ENDPOINTS = {
+    'recid': dict(
+        draft='drecid',
+        # ...
+    ),
+    'drecid': dict(
+        # ...
+        actions={
+            'path': <handler_function_registered_to_blueprint>,
+            # ...
+        }
+    )
+}
+```
+
+
 ## Python API
 
 The entrypoint to python API is at ``oarepo_records_draft.current_drafts``. It has the following
@@ -362,6 +434,74 @@ Returns a list of
 ### Signals
 
 See [signals.py](oarepo_records_draft/signals.py) for the exhaustive list of signals
+
+### Globally-defined actions
+
+To define actions on all draft-managed resources, create your view and a factory 
+function. The function is called for  that returns a dictionary with actions for the given endpoint:
+
+```python
+class TestResource(MethodView):
+    view_name = '{endpoint}_test'
+
+    @pass_record
+    def get(self, pid, record):
+        return jsonify({'status': 'ok'})
+
+
+def action_factory(code, files, rest_endpoint, extra, is_draft):
+    # decide if view should be created on this resource and return blueprint mapping
+    # rest path -> view 
+    return {
+        'files/_test': TestResource.as_view(
+            TestResource.view_name.format(endpoint=code)
+        )
+    }
+```
+
+Register the factory to entry points and all records will have an additional rest action
+at path ``/api/<records>/1/files/_test``
+
+```python
+entry_points={
+    'oarepo_records_draft.extra_actions': [
+        'sample = sample.test:extras'
+    ]
+}
+```
+
+### Custom uploaders
+
+Sometimes you might want to define a custom uploader that creates ``record.files[key]`` instead 
+of the default implementation of ``record.files[key] = <stream from request>``. This might be 
+usable for example when the stream will be provided in a different way (direct link to S3, 
+for example).
+
+Create an uploader function (this one is from tests and replaces content for ``test-uploader`` key):
+
+```
+def uploader(record, key, files, pid, request, resolver, endpoint, **kwargs):
+    if key == 'test-uploader':
+        bt = BytesIO(b'blah')
+        files[key] = bt
+        return lambda: ({
+            'test-uploader': True,
+            'url': resolver(TestResource.view_name)
+        })
+```
+
+The function returns either ``None`` if it did not handle the upload or a no-arg function
+that is used later to return JSON that will be serialized as HTTP 200/201 response.  
+
+Register the function to entry points:
+
+```python
+entry_points={
+    'oarepo_records_draft.uploaders': [
+        'sample = sample.test:uploader'
+    ]
+}
+```
 
 ## Q&A
 

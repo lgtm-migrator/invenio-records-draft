@@ -37,7 +37,7 @@ setup(
         'oarepo_records_draft.uploaders': [
             'sample = sample.test:uploader'
         ],
-        'oarepo_records_draft.extra_endpoints': [
+        'oarepo_records_draft.extra_actions': [
             'sample = sample.test:extras'
         ]
     },

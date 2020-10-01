@@ -47,7 +47,7 @@ try:
 
 
     # adopted from invenio-records-rest
-    def verify_file_permission(permission_factory, record, key, missing_ok):
+    def verify_file_permission(view, permission_factory, record, key, missing_ok):
         if key not in record.files and not missing_ok:
             abort(404)
 
@@ -56,7 +56,8 @@ try:
         except KeyError:
             file_object = None
 
-        permission = apply_permission(permission_factory)(record=record, key=key, file_object=file_object)
+        permission = apply_permission(permission_factory)(view=view, record=record,
+                                                          key=key, file_object=file_object)
 
         if not permission.can():
             from flask_login import current_user
@@ -80,7 +81,7 @@ try:
                     key = request.form.get('key', None)
                     if not key:
                         abort('No file key passed')
-                verify_file_permission(permission_factory, record, key, missing_ok)
+                verify_file_permission(self, permission_factory, record, key, missing_ok)
 
                 return f(self, record=record, *args, **kwargs)
 
@@ -202,7 +203,7 @@ try:
         def get(self, pid, record):
             return jsonify([
                 file for key, file in record.files.filesmap.items()
-                if apply_permission(self.get_file_factory)(record=record, key=key, file_object=file).can()
+                if apply_permission(self.get_file_factory)(view=self, record=record, key=key, file_object=file).can()
             ])
 
         @pass_record

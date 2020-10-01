@@ -41,7 +41,7 @@ class RecordsDraftState:
         self.app = app
         self.managed_records = None  # type: DraftManagedRecords
         self._uploaders = None
-        self._extra_endpoints = None
+        self._extra_actions = None
 
     def app_loaded(self, _sender, app=None, **kwargs):
         with app.app_context():
@@ -132,14 +132,14 @@ class RecordsDraftState:
         return self._uploaders
 
     @property
-    def extra_endpoints(self):
-        if self._extra_endpoints is None:
-            extra_endpoints = []
-            for entry_point in pkg_resources.iter_entry_points('oarepo_records_draft.extra_endpoints'):
-                extra_endpoints.append(entry_point.load())
-            extra_endpoints.sort(key=lambda opener: -getattr(opener, '_priority', 10))
-            self._extra_endpoints = extra_endpoints
-        return self._extra_endpoints
+    def extra_actions(self):
+        if self._extra_actions is None:
+            extra_actions = []
+            for entry_point in pkg_resources.iter_entry_points('oarepo_records_draft.extra_actions'):
+                extra_actions.append(entry_point.load())
+            extra_actions.sort(key=lambda opener: -getattr(opener, '_priority', 10))
+            self._extra_actions = extra_actions
+        return self._extra_actions
 
     def publish(self, record: Union[RecordContext, Record], record_pid=None):
         if isinstance(record, Record):
