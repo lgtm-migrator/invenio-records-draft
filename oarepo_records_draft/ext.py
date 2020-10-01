@@ -91,6 +91,18 @@ class RecordsDraftState:
     def endpoint_for_record_class(self, clz):
         return self.managed_records.by_record_class(clz)
 
+    def indexer_for_record(self, record):
+        return self.indexer_class_for_record_class(type(record))()
+
+    @functools.lru_cache(maxsize=32)
+    def indexer_class_for_record_class(self, clz):
+        endpoint = self.managed_records.by_record_class(clz)
+        if endpoint:
+            indexer = endpoint.rest.get('indexer_class', 'invenio_indexer.api.RecordIndexer')
+            return obj_or_import_string(indexer)
+        else:
+            return obj_or_import_string('invenio_indexer.api.RecordIndexer')
+
     @functools.lru_cache(maxsize=32)
     def endpoint_for_pid_type(self, pid_type):
         return self.managed_records.by_pid_type[pid_type]
@@ -145,7 +157,7 @@ class RecordsDraftState:
                     RecordIndexer().delete(draft_record.record, refresh=True)
                 except:
                     logger.debug('Error deleting record', draft_record.record_pid)
-                RecordIndexer().index(published_record.record)
+                self.indexer_for_record(published_record.record).index(published_record.record)
                 # mark all object pids as deleted
                 all_pids = PersistentIdentifier.query.filter(
                     PersistentIdentifier.object_type == draft_record.record_pid.object_type,
@@ -196,7 +208,7 @@ class RecordsDraftState:
 
             for published_record, draft_record in result:
                 draft_record.record.commit()
-                RecordIndexer().index(draft_record.record)
+                self.indexer_for_record(draft_record.record).index(draft_record.record)
 
         current_search_client.indices.refresh()
         current_search_client.indices.flush()
@@ -243,7 +255,7 @@ class RecordsDraftState:
                 except:
                     logger.debug('Error deleting record', published_record.record_pid)
                 draft_record.record.commit()
-                RecordIndexer().index(draft_record.record)
+                self.indexer_for_record(draft_record.record).index(draft_record.record)
                 # mark all object pids as deleted
                 all_pids = PersistentIdentifier.query.filter(
                     PersistentIdentifier.object_type == published_record.record_pid.object_type,

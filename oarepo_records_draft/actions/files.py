@@ -2,6 +2,8 @@ import six
 from invenio_pidstore.models import PersistentIdentifier
 from werkzeug.utils import import_string
 
+from oarepo_records_draft import current_drafts
+
 try:
 
     from functools import wraps, lru_cache
@@ -111,6 +113,7 @@ try:
                 file_rec[k] = v
             record.commit()
             db.session.commit()
+            current_drafts.indexer_for_record(record).index(record)
             return jsonify(record.files[key].dumps())
 
         @pass_record
@@ -123,6 +126,7 @@ try:
             attachment_deleted_before_commit.send(record, record=record, file=deleted_record, pid=pid)
             record.commit()
             db.session.commit()
+            current_drafts.indexer_for_record(record).index(record)
             file_deleted.send(deleted_record_version)
             attachment_deleted.send(deleted_record_version, record=record, file=deleted_record, pid=pid)
             ret = jsonify(deleted_record.dumps())
@@ -205,6 +209,7 @@ try:
         attachment_uploaded_before_commit.send(record, record=record, file=record.files[key], files=files, pid=pid)
         record.commit()
         db.session.commit()
+        current_drafts.indexer_for_record(record).index(record)
         version = record.files[key].get_version()
         file_uploaded.send(version)
         attachment_uploaded.send(version, record=record, file=files[key], files=files, pid=pid)
