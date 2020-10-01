@@ -4,6 +4,7 @@ import uuid
 from typing import List, Union
 
 import invenio_indexer.config
+import pkg_resources
 from invenio_base.signals import app_loaded
 from invenio_base.utils import obj_or_import_string
 from invenio_db import db
@@ -39,6 +40,8 @@ class RecordsDraftState:
     def __init__(self, app):
         self.app = app
         self.managed_records = None  # type: DraftManagedRecords
+        self._uploaders = None
+        self._extra_endpoints = None
 
     def app_loaded(self, _sender, app=None, **kwargs):
         with app.app_context():
@@ -117,6 +120,26 @@ class RecordsDraftState:
     @functools.lru_cache(maxsize=32)
     def endpoint_for_schema(self, schema, is_draft):
         return self.managed_records.by_schema(schema, is_draft)
+
+    @property
+    def uploaders(self):
+        if self._uploaders is None:
+            uploaders = []
+            for entry_point in pkg_resources.iter_entry_points('oarepo_records_draft.uploaders'):
+                uploaders.append(entry_point.load())
+            uploaders.sort(key=lambda opener: -getattr(opener, '_priority', 10))
+            self._uploaders = uploaders
+        return self._uploaders
+
+    @property
+    def extra_endpoints(self):
+        if self._extra_endpoints is None:
+            extra_endpoints = []
+            for entry_point in pkg_resources.iter_entry_points('oarepo_records_draft.extra_endpoints'):
+                extra_endpoints.append(entry_point.load())
+            extra_endpoints.sort(key=lambda opener: -getattr(opener, '_priority', 10))
+            self._extra_endpoints = extra_endpoints
+        return self._extra_endpoints
 
     def publish(self, record: Union[RecordContext, Record], record_pid=None):
         if isinstance(record, Record):

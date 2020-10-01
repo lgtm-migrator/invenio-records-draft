@@ -166,6 +166,7 @@ A notification aka rest's file_downloaded but tied to a record
 
 :param sender ObjectVersion 
 :param record attachment's record
+:param files  record's .files
 :param file   FileObject on the record
 :param pid    PersistentIdentifier of the record
 """
@@ -176,6 +177,7 @@ A notification aka rest's file_deleted but tied to a record and called before th
 
 :param sender attachment's record 
 :param record attachment's record
+:param files  record's .files
 :param file   FileObject on the record
 :param pid    PersistentIdentifier of the record
 """
@@ -187,6 +189,18 @@ A notification aka rest's file_deleted but tied to a record and called before th
 
 :param sender attachment's record 
 :param record attachment's record
+:param files  record's .files
+:param file   FileObject on the record
+:param pid    PersistentIdentifier of the record
+"""
+
+attachment_deleted_before_flush = _signals.signal('attachment_deleted_before_flush')
+"""
+A notification aka rest's file_deleted but tied to a record and called before the record's files have been flushed
+
+:param sender attachment's record 
+:param record attachment's record
+:param files  record's .files
 :param file   FileObject on the record
 :param pid    PersistentIdentifier of the record
 """
@@ -197,6 +211,56 @@ A notification aka rest's file_deleted but tied to a record
 
 :param sender ObjectVersion 
 :param record attachment's record
+:param files  record's .files
 :param file   FileObject on the record
 :param pid    PersistentIdentifier of the record
+"""
+
+attachment_before_metadata_modified = _signals.signal('attachment_before_metadata_modified')
+"""
+A notification send before attachment's metadata are modified
+
+:param sender attachment's record 
+:param record attachment's record
+:param files  record's .files
+:param file   FileObject on the record
+:param pid    PersistentIdentifier of the record
+:param metadata form metadata to be set up
+"""
+
+attachment_after_metadata_modified = _signals.signal('attachment_before_metadata_modified')
+"""
+A notification send before attachment's metadata are modified
+
+:param sender attachment's record 
+:param record attachment's record
+:param files  record's .files
+:param file   FileObject on the record
+:param pid    PersistentIdentifier of the record
+:param metadata form metadata to be set up
+"""
+
+
+attachment_metadata_modified_before_flush = _signals.signal('attachment_metadata_modified_before_flush')
+"""
+A notification send before attachment's metadata are modified
+
+:param sender attachment's record 
+:param record attachment's record
+:param files  record's .files
+:param file   FileObject on the record
+:param pid    PersistentIdentifier of the record
+:param metadata form metadata to be set up
+"""
+
+attachment_metadata_modified_before_commit = _signals.signal('attachment_metadata_modified_before_commit')
+"""
+A notification send before attachment's metadata are modified
+
+:param sender attachment's record 
+:param record attachment's record
+:param files  record's .files
+:param file   FileObject on the record
+:param pid    PersistentIdentifier of the record
+:param metadata form metadata to be set up
 """

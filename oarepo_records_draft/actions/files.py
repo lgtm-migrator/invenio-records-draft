@@ -1,3 +1,6 @@
+import datetime
+import traceback
+
 import six
 from invenio_pidstore.models import PersistentIdentifier
 from werkzeug.utils import import_string
@@ -20,8 +23,11 @@ try:
     from invenio_files_rest.serializer import json_serializer
 
     from oarepo_records_draft.signals import attachment_uploaded, attachment_deleted, attachment_downloaded, \
-    attachment_uploaded_before_commit, attachment_deleted_before_commit, attachment_before_deleted, \
-    attachment_before_uploaded, attachment_uploaded_before_flush
+        attachment_uploaded_before_commit, attachment_deleted_before_commit, attachment_before_deleted, \
+        attachment_before_uploaded, attachment_uploaded_before_flush, \
+        attachment_before_metadata_modified, attachment_metadata_modified_before_flush, \
+        attachment_after_metadata_modified, \
+        attachment_metadata_modified_before_commit, attachment_deleted_before_flush
 
 
     @lru_cache(maxsize=32)
@@ -108,27 +114,44 @@ try:
         @pass_record
         @need_file_permission('put_file_factory', missing_ok=True)
         def post(self, pid, record, key):
-            file_rec = record.files[key]
-            for k, v in request.form.items():
+            files = record.files
+            file_rec = files[key]
+            metadata = {}
+            metadata.update(request.form or {})
+            metadata.update(request.json or {})
+            attachment_before_metadata_modified.send(record, record=record, file=file_rec, pid=pid, files=files,
+                                                     metadata=metadata)
+            for k, v in metadata.items():
                 file_rec[k] = v
+
+            attachment_metadata_modified_before_flush.send(record, record=record, file=file_rec, pid=pid, files=files,
+                                                           metadata=metadata)
+            files.flush()
+            attachment_metadata_modified_before_commit.send(record, record=record, file=file_rec, pid=pid, files=files,
+                                                            metadata=metadata)
             record.commit()
             db.session.commit()
+            attachment_after_metadata_modified.send(record, record=record, file=file_rec, pid=pid, files=files,
+                                                    metadata=metadata)
             current_drafts.indexer_for_record(record).index(record)
             return jsonify(record.files[key].dumps())
 
         @pass_record
         @need_file_permission('delete_file_factory')
         def delete(self, pid, record, key):
-            deleted_record = record.files[key]
+            files = record.files
+            deleted_record = files[key]
             deleted_record_version = deleted_record.get_version()
-            attachment_before_deleted.send(record, record=record, file=deleted_record, pid=pid)
-            del record.files[key]
-            attachment_deleted_before_commit.send(record, record=record, file=deleted_record, pid=pid)
+            attachment_before_deleted.send(record, record=record, files=files, file=deleted_record, pid=pid)
+            del files[key]
+            attachment_deleted_before_flush.send(record, record=record, files=files, file=deleted_record, pid=pid)
+            files.flush()
+            attachment_deleted_before_commit.send(record, record=record, files=files, file=deleted_record, pid=pid)
             record.commit()
             db.session.commit()
             current_drafts.indexer_for_record(record).index(record)
             file_deleted.send(deleted_record_version)
-            attachment_deleted.send(deleted_record_version, record=record, file=deleted_record, pid=pid)
+            attachment_deleted.send(deleted_record_version, record=record, files=files, file=deleted_record, pid=pid)
             ret = jsonify(deleted_record.dumps())
             ret.status_code = 200
             return ret
@@ -136,10 +159,13 @@ try:
         @pass_record
         @need_file_permission('get_file_factory')
         def get(self, pid, record, key):
-            obj = record.files[key]
+            files = record.files
+            obj = files[key]
             obj = obj.get_version(obj.obj.version_id)  # get the explicit version in record
+            if obj.file.checksum is None:
+                abort(404, 'File is not uploaded yet')
             file_downloaded.send(obj)
-            attachment_downloaded.send(obj, record=record, file=record.files[key], pid=pid)
+            attachment_downloaded.send(obj, record=record, files=files, file=obj, pid=pid)
             return obj.send_file(restricted=self.call(self.restricted, record, obj, key),
                                  as_attachment=self.call(self.as_attachment, record, obj, key))
 
@@ -193,9 +219,19 @@ try:
         files = record.files
         attachment_before_uploaded.send(record, record=record, key=key, files=files, pid=pid)
 
-        files[key] = stream
+        for uploader in current_drafts.uploaders:
+            result = uploader(record=record, key=key, files=files, pid=pid, request=request,
+                              resolver=lambda name, **kwargs: url_for(
+                                  'oarepo_records_draft.' + name,
+                                  pid_value=pid.pid_value, **kwargs, _external=True))
+            if result:
+                response_creator = result
+                break
+        else:
+            files[key] = stream
+            response_creator = lambda: record.files[key].dumps()
 
-        file_rec = record.files[key]
+        file_rec = files[key]
         for k, v in props.items():
             if k == 'key':
                 continue
@@ -213,11 +249,12 @@ try:
         version = record.files[key].get_version()
         file_uploaded.send(version)
         attachment_uploaded.send(version, record=record, file=files[key], files=files, pid=pid)
-        ret = jsonify(record.files[key].dumps())
+        ret = jsonify(response_creator())
         ret.status_code = 201
         return ret
 
-except:
+except ImportError:
+    traceback.print_exc()
     FileResource = None
     FileListResource = None
 

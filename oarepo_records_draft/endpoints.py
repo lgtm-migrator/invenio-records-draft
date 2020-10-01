@@ -10,6 +10,7 @@ from invenio_pidstore.models import PersistentIdentifier
 from invenio_records_rest.utils import deny_all, check_elasticsearch, allow_all
 from invenio_search import current_search
 
+from oarepo_records_draft import current_drafts
 from oarepo_records_draft.actions.files import FileResource, FileListResource
 from oarepo_records_draft.links import PublishedLinksFactory, DraftLinksFactory
 from oarepo_records_draft.record import DraftRecordMixin
@@ -276,23 +277,29 @@ def generate_draft_record_class(record_class):
 
 
 def setup_files(code, files, rest_endpoint, extra):
-    if not FileResource:
-        return {}
-    return {
-        'attachments/<key>': FileResource.as_view(
-            FileResource.view_name.format(code),
-            get_file_factory=files.get('get_file_factory', deny_all),
-            put_file_factory=files.get('put_file_factory', deny_all),
-            delete_file_factory=files.get('delete_file_factory', deny_all),
-            restricted=files.get('restricted', True),
-            as_attachment=files.get('as_attachment', True),
-            endpoint_code=code
-        ),
-        'attachments': FileListResource.as_view(
-            FileListResource.view_name.format(code),
-            get_file_factory=files.get('get_file_factory', deny_all),
-            put_file_factory=files.get('put_file_factory', deny_all),
-            serializers = files.get('serializers', None),
-            endpoint_code=code
-        )
-    }
+    endpoints = {}
+    for extra_endpoint_handler in current_drafts.extra_endpoints:
+        endpoints.update(extra_endpoint_handler(
+            code=code,
+            files=files,
+            rest_endpoint=rest_endpoint,
+            extra=extra
+        ))
+    if FileResource:
+        endpoints['attachments/<key>'] = FileResource.as_view(
+                FileResource.view_name.format(code),
+                get_file_factory=files.get('get_file_factory', deny_all),
+                put_file_factory=files.get('put_file_factory', deny_all),
+                delete_file_factory=files.get('delete_file_factory', deny_all),
+                restricted=files.get('restricted', True),
+                as_attachment=files.get('as_attachment', True),
+                endpoint_code=code
+            )
+        endpoints['attachments'] = FileListResource.as_view(
+                FileListResource.view_name.format(code),
+                get_file_factory=files.get('get_file_factory', deny_all),
+                put_file_factory=files.get('put_file_factory', deny_all),
+                serializers=files.get('serializers', None),
+                endpoint_code=code
+            )
+    return endpoints
