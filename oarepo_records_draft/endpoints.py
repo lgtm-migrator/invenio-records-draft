@@ -284,7 +284,7 @@ def setup_files(code, files, rest_endpoint, extra):
             files=files,
             rest_endpoint=rest_endpoint,
             extra=extra
-        ))
+        ) or {})
     if FileResource:
         endpoints['files/<key>'] = FileResource.as_view(
                 FileResource.view_name.format(code),

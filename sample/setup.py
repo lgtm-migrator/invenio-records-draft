@@ -34,6 +34,12 @@ setup(
         'invenio_base.apps': [
             'sample = sample.ext:SampleExt',
         ],
+        'oarepo_records_draft.uploaders': [
+            'sample = sample.test:uploader'
+        ],
+        'oarepo_records_draft.extra_endpoints': [
+            'sample = sample.test:extras'
+        ]
     },
     classifiers=[
         'Environment :: Web Environment',

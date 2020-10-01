@@ -6,6 +6,7 @@ from invenio_pidstore.models import PersistentIdentifier
 from werkzeug.utils import import_string
 
 from oarepo_records_draft import current_drafts
+from oarepo_records_draft.types import RecordEndpointConfiguration
 
 try:
 
@@ -122,19 +123,19 @@ try:
             metadata.update(request.form or {})
             metadata.update(request.json or {})
             file_before_metadata_modified.send(record, record=record, file=file_rec, pid=pid, files=files,
-                                                     metadata=metadata)
+                                               metadata=metadata)
             for k, v in metadata.items():
                 file_rec[k] = v
 
             file_metadata_modified_before_flush.send(record, record=record, file=file_rec, pid=pid, files=files,
-                                                           metadata=metadata)
+                                                     metadata=metadata)
             files.flush()
             file_metadata_modified_before_commit.send(record, record=record, file=file_rec, pid=pid, files=files,
-                                                            metadata=metadata)
+                                                      metadata=metadata)
             record.commit()
             db.session.commit()
             file_after_metadata_modified.send(record, record=record, file=file_rec, pid=pid, files=files,
-                                                    metadata=metadata)
+                                              metadata=metadata)
             current_drafts.indexer_for_record(record).index(record)
             return jsonify(record.files[key].dumps())
 
@@ -180,6 +181,7 @@ try:
     class FileListResource(ContentNegotiatedMethodView):
 
         view_name = '{0}_files'
+        link_name = 'files'
 
         def __init__(self, get_file_factory=None, put_file_factory=None,
                      serializers=None, endpoint_code=None, *args,
@@ -221,10 +223,13 @@ try:
         files = record.files
         file_before_uploaded.send(record, record=record, key=key, files=files, pid=pid)
 
+        endpoint: RecordEndpointConfiguration = current_drafts.endpoint_for_record(record)
+
         for uploader in current_drafts.uploaders:
             result = uploader(record=record, key=key, files=files, pid=pid, request=request,
+                              endpoint=endpoint,
                               resolver=lambda name, **kwargs: url_for(
-                                  'oarepo_records_draft.' + name,
+                                  'oarepo_records_draft.' + name.format(endpoint=endpoint.rest_name),
                                   pid_value=pid.pid_value, **kwargs, _external=True))
             if result:
                 response_creator = result

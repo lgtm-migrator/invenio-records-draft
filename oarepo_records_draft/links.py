@@ -38,22 +38,26 @@ class LinksFactory:
         for rule, action in self.actions.items():
             try:
                 view_name = None
+                link_name = None
                 if hasattr(action, 'view_class'):
                     view_name = action.view_class.view_name
+                    link_name = getattr(action.view_class, 'link_name', None)
                 elif hasattr(action, 'view_name'):
                     view_name = action.view_name
+                    link_name = getattr(action, 'link_name', None)
 
-                if view_name:
-                    resp[rule] = url_for(
-                        'oarepo_records_draft.{0}'.format(
-                            view_name.format(self.endpoint.rest_name)
-                        ), pid_value=pid.pid_value, _external=True)
-                else:
-                    resp[rule] = url_for(
-                        'oarepo_records_draft.{0}_{1}'.format(
-                            rule,
-                            self.endpoint.rest_name
-                        ), pid_value=pid.pid_value, _external=True)
+                if link_name:
+                    if view_name:
+                        resp[link_name] = url_for(
+                            'oarepo_records_draft.{0}'.format(
+                                view_name.format(self.endpoint.rest_name)
+                            ), pid_value=pid.pid_value, _external=True)
+                    else:
+                        resp[link_name] = url_for(
+                            'oarepo_records_draft.{0}_{1}'.format(
+                                rule,
+                                self.endpoint.rest_name
+                            ), pid_value=pid.pid_value, _external=True)
             except BuildError:
                 pass
         return resp
