@@ -49,9 +49,9 @@ setup(
     zip_safe=False,
     packages=['oarepo_records_draft'],
     entry_points={
-        # 'flask.commands': [
-        #     'draft = oarepo_records_draft.cli:draft',
-        # ],
+        'flask.commands': [
+            'drafts = oarepo_records_draft.cli:drafts',
+        ],
         'invenio_config.module': [
             'oarepo_records_draft = oarepo_records_draft.config',
         ],
