@@ -50,7 +50,7 @@ setup(
     packages=['oarepo_records_draft'],
     entry_points={
         'flask.commands': [
-            'drafts = oarepo_records_draft.cli:drafts',
+            'oarepo:draft = oarepo_records_draft.cli:drafts',
         ],
         'invenio_config.module': [
             'oarepo_records_draft = oarepo_records_draft.config',

@@ -1,4 +1,4 @@
-Invenio Records Draft
+from oarepo_records_draft import DRAFT_FACETSInvenio Records Draft
 =====================
 
 [![image][]][1] [![image][2]][3] [![image][4]][5] [![image][6]][7]
@@ -500,6 +500,27 @@ entry_points={
     'oarepo_records_draft.uploaders': [
         'sample = sample.test:uploader'
     ]
+}
+```
+
+### Facets and filters
+
+To add facets and filters for validation errors, import and use ``DRAFT_FACETS`` and ``DRAFT_FILTERS``
+
+```python
+from oarepo_records_draft import DRAFT_FACETS, DRAFT_FILTERS
+
+RECORDS_REST_FACETS = {
+    'draft-records-record-v1.0.0': {
+        'aggs': {
+            # ...
+            **DRAFT_FACETS
+        },
+        'filters': {
+            # ...
+            **DRAFT_FILTERS
+        }
+    }
 }
 ```
 

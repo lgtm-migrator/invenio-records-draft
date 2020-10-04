@@ -70,12 +70,14 @@ draft_validation_json = {
                         "type": "object",
                         "properties": {
                             "field": {
-                                "type": "keyword"
+                                "type": "keyword",
+                                "copy_to": "oarepo:validity.errors.all.field"
                             },
                             "message": {
                                 "type": "text",
+                                "copy_to": "oarepo:validity.errors.all.message",
                                 "fields": {
-                                    "keyword": {
+                                    "raw": {
                                         "type": "keyword"
                                     }
                                 }
@@ -86,12 +88,14 @@ draft_validation_json = {
                         "type": "object",
                         "properties": {
                             "field": {
-                                "type": "keyword"
+                                "type": "keyword",
+                                "copy_to": "oarepo:validity.errors.all.field"
                             },
                             "message": {
                                 "type": "text",
+                                "copy_to": "oarepo:validity.errors.all.message",
                                 "fields": {
-                                    "keyword": {
+                                    "raw": {
                                         "type": "keyword"
                                     }
                                 }
@@ -99,7 +103,24 @@ draft_validation_json = {
                         }
                     },
                     "other": {
-                        "type": "text"
+                        "type": "text",
+                        "copy_to": "oarepo:validity.errors.all.message",
+                    },
+                    "all": {
+                        "type": "object",
+                        "properties": {
+                            "field": {
+                                "type": "keyword"
+                            },
+                            "message": {
+                                "type": "text",
+                                "fields": {
+                                    "raw": {
+                                        "type": "keyword"
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
