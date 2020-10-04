@@ -21,12 +21,14 @@ def test_draft_mapping(app):
                                     "type": "object",
                                     "properties": {
                                         "field": {
-                                            "type": "keyword"
+                                            "type": "keyword",
+                                            "copy_to": "oarepo:validity.errors.all.field"
                                         },
                                         "message": {
                                             "type": "text",
+                                            "copy_to": "oarepo:validity.errors.all.message",
                                             "fields": {
-                                                "keyword": {
+                                                "raw": {
                                                     "type": "keyword"
                                                 }
                                             }
@@ -37,12 +39,14 @@ def test_draft_mapping(app):
                                     "type": "object",
                                     "properties": {
                                         "field": {
-                                            "type": "keyword"
+                                            "type": "keyword",
+                                            "copy_to": "oarepo:validity.errors.all.field"
                                         },
                                         "message": {
                                             "type": "text",
+                                            "copy_to": "oarepo:validity.errors.all.message",
                                             "fields": {
-                                                "keyword": {
+                                                "raw": {
                                                     "type": "keyword"
                                                 }
                                             }
@@ -50,8 +54,25 @@ def test_draft_mapping(app):
                                     }
                                 },
                                 "other": {
-                                    "type": "text"
-                                }
+                                    "type": "text",
+                                    "copy_to": "oarepo:validity.errors.all.message",
+                                },
+                                'all': {
+                                    'properties': {
+                                        'field': {
+                                            'type': 'keyword'
+                                        },
+                                        'message': {
+                                            'fields': {
+                                                'raw': {
+                                                    'type': 'keyword'
+                                                }
+                                            },
+                                            'type': 'text'
+                                        }
+                                    },
+                                    'type': 'object'
+                                },
                             }
                         },
                         'valid': {
