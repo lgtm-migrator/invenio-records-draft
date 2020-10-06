@@ -37,7 +37,7 @@ try:
         'key': fields.String(locations=('form', 'json'), required=True),
         'multipart': fields.Boolean(default=False, locations=('query',)),
         'multipart_content_type': fields.String(default=None,
-                                                location=('form', 'json'),
+                                                locations=('form', 'json'),
                                                 required=False)
     }
 
@@ -216,7 +216,7 @@ try:
             ])
 
         @pass_record
-        @use_kwargs('files_post_request')
+        @use_kwargs(files_post_request)
         @need_file_permission('put_file_factory', missing_ok=True)
         def post(self, pid: PersistentIdentifier, record, key, multipart=False, multipart_content_type=None):
             stream = None
