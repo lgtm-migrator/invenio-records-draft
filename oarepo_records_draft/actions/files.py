@@ -1,8 +1,9 @@
-import datetime
 import traceback
 
 import six
 from invenio_pidstore.models import PersistentIdentifier
+from webargs import fields
+from webargs.flaskparser import use_kwargs
 from werkzeug.utils import import_string
 
 from oarepo_records_draft import current_drafts
@@ -31,6 +32,14 @@ try:
         file_before_metadata_modified, file_metadata_modified_before_flush, \
         file_after_metadata_modified, \
         file_metadata_modified_before_commit, file_deleted_before_flush
+
+    files_post_request = {
+        'key': fields.String(locations=('form', 'json'), required=True),
+        'multipart': fields.Boolean(default=False, locations=('query',)),
+        'multipart_content_type': fields.String(default=None,
+                                                locations=('form', 'json'),
+                                                required=False)
+    }
 
 
     @lru_cache(maxsize=32)
@@ -207,16 +216,30 @@ try:
             ])
 
         @pass_record
+        @use_kwargs(files_post_request)
         @need_file_permission('put_file_factory', missing_ok=True)
-        def post(self, pid: PersistentIdentifier, record):
-            all_files = [v for v in request.files.values()]
-            if len(all_files) != 1:
-                abort(400, 'Only one file expected')
+        def post(self, pid: PersistentIdentifier, record, key, multipart=False, multipart_content_type=None):
+            stream = None
+            content_type = 'application/octet-stream'
+
+            if not multipart:
+                all_files = [v for v in request.files.values()]
+                if len(all_files) != 1:
+                    abort(400, 'Only one file expected')
+
+                content_type = all_files[0].content_type
+                stream = all_files[0].stream
+            else:
+                if not multipart_content_type:
+                    abort(400, 'multipart_content_type not provided for multipart upload')
+
+                content_type = multipart_content_type
 
             return create_record_file(pid, record,
-                                      request.form['key'], all_files[0].stream,
-                                      all_files[0].content_type,
-                                      request.form, self.endpoint_code)
+                                      key, stream,
+                                      content_type,
+                                      request.form,
+                                      self.endpoint_code)
 
 
     def create_record_file(pid, record, key, stream, content_type, props, endpoint_code):
