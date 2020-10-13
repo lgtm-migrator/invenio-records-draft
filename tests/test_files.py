@@ -109,3 +109,13 @@ def test_rest_attachment_authenticated(app, db, client, draft_record, test_users
     resp = client.delete('/draft/records/1/files/test.txt')
     assert resp.status_code == 200
     assert resp.json == uploaded_file
+
+    # multipart create
+    resp = client.post('/draft/records/1/files?multipart=true',
+                       data={
+                           'key': 'test-uploader',
+                           'multipart_content_type': 'text/plain'
+                       })
+    assert resp.status_code == 201
+    multi_resp = resp.json
+    assert multi_resp is not None

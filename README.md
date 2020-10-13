@@ -1,4 +1,4 @@
-from oarepo_records_draft import DRAFT_FACETSInvenio Records Draft
+Invenio Records Draft
 =====================
 
 [![image][]][1] [![image][2]][3] [![image][4]][5] [![image][6]][7]
