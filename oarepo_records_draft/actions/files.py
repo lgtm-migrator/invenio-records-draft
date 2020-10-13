@@ -89,6 +89,11 @@ try:
 
         return permission_builder
 
+    def index_record(record):
+        indexer = current_drafts.indexer_for_record(record)
+        if indexer:
+            indexer.index(record)
+
 
     class FileResource(MethodView):
         view_name = '{0}_file'
@@ -137,7 +142,7 @@ try:
             db.session.commit()
             file_after_metadata_modified.send(record, record=record, file=file_rec, pid=pid, files=files,
                                               metadata=metadata)
-            current_drafts.indexer_for_record(record).index(record)
+            index_record(record)
             return jsonify(record.files[key].dumps())
 
         @pass_record
@@ -153,7 +158,7 @@ try:
             file_deleted_before_commit.send(record, record=record, files=files, file=deleted_record, pid=pid)
             record.commit()
             db.session.commit()
-            current_drafts.indexer_for_record(record).index(record)
+            index_record(record)
             rest_file_deleted.send(deleted_record_version)
             file_deleted.send(deleted_record_version, record=record, files=files, file=deleted_record, pid=pid)
             ret = jsonify(deleted_record.dumps())
@@ -253,7 +258,7 @@ try:
         file_uploaded_before_commit.send(record, record=record, file=record.files[key], files=files, pid=pid)
         record.commit()
         db.session.commit()
-        current_drafts.indexer_for_record(record).index(record)
+        index_record(record)
         version = record.files[key].get_version()
         rest_file_uploaded.send(version)
         file_uploaded.send(version, record=record, file=files[key], files=files, pid=pid)

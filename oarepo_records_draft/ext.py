@@ -95,7 +95,10 @@ class RecordsDraftState:
         return self.managed_records.by_record_class(clz)
 
     def indexer_for_record(self, record):
-        return self.indexer_class_for_record_class(type(record))()
+        indexer_class = self.indexer_class_for_record_class(type(record))
+        if indexer_class:
+            return indexer_class()
+        return None
 
     @functools.lru_cache(maxsize=32)
     def indexer_class_for_record_class(self, clz):
