@@ -3,6 +3,9 @@
 include LICENSE
 recursive-include oarepo_records_draft *.py
 recursive-include oarepo_records_draft *.json
+recursive-include oarepo_records_draft *.po
+recursive-include oarepo_records_draft *.mo
+recursive-include oarepo_records_draft *.pot
 
 recursive-exclude tests *.py
 recursive-exclude tests *.json
@@ -18,3 +21,4 @@ exclude tests/schemas
 exclude tests/schemas/test
 exclude sample
 include *.rst
+exclude *.sh

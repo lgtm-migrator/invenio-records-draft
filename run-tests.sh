@@ -27,5 +27,5 @@
 
 pip install -e sample
 # isort -rc -c -df . && \
-check-manifest --ignore ".travis-*" && \
+check-manifest --ignore ".travis-*" --ignore-bad-ideas '*.mo' && \
 pytest -vv
