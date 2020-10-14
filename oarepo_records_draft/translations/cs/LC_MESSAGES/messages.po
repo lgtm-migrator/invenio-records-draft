@@ -1,0 +1,52 @@
+# Czech translations for PROJECT.
+# Copyright (C) 2020 ORGANIZATION
+# This file is distributed under the same license as the PROJECT project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2020-10-14 15:29+0200\n"
+"PO-Revision-Date: 2020-10-14 15:25+0200\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: cs\n"
+"Language-Team: cs <LL@li.org>\n"
+"Plural-Forms: nplurals=3; plural=((n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2)\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.8.0\n"
+
+#: oarepo_records_draft/_i18n.py:7
+msgid "draftValid"
+msgstr "Validní?"
+
+#: oarepo_records_draft/_i18n.py:8
+msgid "draftMarshmallowErrorField"
+msgstr "Marshmallow chybná pole"
+
+#: oarepo_records_draft/_i18n.py:9
+msgid "draftMarshmallowErrorMessage"
+msgstr "Chyby marshmallow"
+
+#: oarepo_records_draft/_i18n.py:10
+msgid "draftSchemaErrorField"
+msgstr "Schéma chybná pole"
+
+#: oarepo_records_draft/_i18n.py:11
+msgid "draftSchemaErrorMessage"
+msgstr "Chyby schematu"
+
+#: oarepo_records_draft/_i18n.py:12
+msgid "draftOtherErrorMessage"
+msgstr "Ostatní chyby"
+
+#: oarepo_records_draft/_i18n.py:13
+msgid "draftAllErrorField"
+msgstr "Chybná pole"
+
+#: oarepo_records_draft/_i18n.py:14
+msgid "draftAllErrorMessage"
+msgstr "Chyby"
+

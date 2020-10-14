@@ -22,6 +22,10 @@ extras_require = {
     'tests': tests_require,
     'tests_files': [
         'invenio-files-rest'
+    ],
+    'dev': [
+        *tests_require,
+        'Babel'
     ]
 }
 
@@ -61,6 +65,9 @@ setup(
         'invenio_base.apps': [
             'oarepo_records_draft = oarepo_records_draft.ext:RecordsDraft',
         ],
+        "invenio_i18n.translations": [
+            "oarepo_records_draft = oarepo_records_draft"
+        ]
     },
     include_package_data=True,
     setup_requires=setup_requires,
