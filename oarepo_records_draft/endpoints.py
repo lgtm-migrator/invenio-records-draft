@@ -296,7 +296,7 @@ def setup_files(code, files, rest_endpoint, extra, is_draft):
                 as_attachment=files.get('as_attachment', True),
                 endpoint_code=code
             )
-        endpoints['files'] = FileListResource.as_view(
+        endpoints['files/'] = FileListResource.as_view(
                 FileListResource.view_name.format(code),
                 get_file_factory=files.get('get_file_factory', deny_all),
                 put_file_factory=files.get('put_file_factory', deny_all),

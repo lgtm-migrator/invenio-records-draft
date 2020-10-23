@@ -16,7 +16,7 @@ def test_upload_links(app, db, client, draft_record):
     assert resp.status_code == 200
     assert resp.json['links'] == {
         'self': 'http://localhost:5000/draft/records/1',
-        'files': 'http://localhost:5000/draft/records/1/files'
+        'files': 'http://localhost:5000/draft/records/1/files/'
     }
 
 
@@ -59,14 +59,14 @@ def test_rest_attachment_authenticated(app, db, client, draft_record, test_users
     client.get('/test/logout')
     client.get('/test/login/3')
 
-    resp = client.get('/draft/records/1/files')
+    resp = client.get('/draft/records/1/files/')
     assert resp.status_code == 200
     assert resp.json == []  # user 3 has no rights for files
 
     client.get('/test/logout')
     client.get('/test/login/1')
 
-    resp = client.get('/draft/records/1/files')
+    resp = client.get('/draft/records/1/files/')
     assert resp.status_code == 200
     assert resp.json == [
         uploaded_file
@@ -111,7 +111,7 @@ def test_rest_attachment_authenticated(app, db, client, draft_record, test_users
     assert resp.json == uploaded_file
 
     # multipart create
-    resp = client.post('/draft/records/1/files?multipart=true',
+    resp = client.post('/draft/records/1/files/?multipart=true',
                        data={
                            'key': 'test-uploader',
                            'multipart_content_type': 'text/plain'

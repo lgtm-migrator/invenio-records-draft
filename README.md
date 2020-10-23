@@ -335,7 +335,7 @@ and returns an object with ``can()`` method.
 Adding the factory creates urls in the same manner as ``invenio-records-rest``:
 
 ```
-/api/<records or draft records>/<recid>/files
+/api/<records or draft records>/<recid>/files/
     GET  ... lists all the files uploaded to a record
     POST<form data with a file> ... uploads a file and associates metadata with the file
 
