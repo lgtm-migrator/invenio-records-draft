@@ -38,6 +38,7 @@ class DraftRecordMixin:
         except FatalDraftException as e:
             if getattr(e, '__cause__', None):
                 raise e.__cause__
+            raise e
         except MarshmallowErrors as e:
             self.save_marshmallow_error(e)
         except SchemaValidationError as e:
