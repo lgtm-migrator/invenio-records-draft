@@ -8,7 +8,7 @@ Invenio Records Draft
   [image]: https://img.shields.io/github/license/oarepo/invenio-records-draft.svg
   [1]: https://github.com/oarepo/invenio-records-draft/blob/master/LICENSE
   [2]: https://img.shields.io/travis/oarepo/invenio-records-draft.svg
-  [3]: https://travis-ci.org/oarepo/invenio-records-draft
+  [3]: https://travis-ci.com/oarepo/invenio-records-draft
   [4]: https://img.shields.io/coveralls/oarepo/invenio-records-draft.svg
   [5]: https://coveralls.io/r/oarepo/invenio-records-draft
   [6]: https://img.shields.io/pypi/v/oarepo-invenio-records-draft.svg
