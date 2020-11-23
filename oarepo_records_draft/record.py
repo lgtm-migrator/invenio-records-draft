@@ -4,6 +4,7 @@ from invenio_search import current_search
 from jsonschema import ValidationError as SchemaValidationError
 from oarepo_validate import after_marshmallow_validate
 
+from oarepo_records_draft.exceptions import FatalDraftException
 from oarepo_records_draft.merge import draft_merger
 from oarepo_records_draft.proxies import current_drafts
 from oarepo_records_draft.types import RecordEndpointConfiguration
@@ -30,6 +31,9 @@ class DraftRecordMixin:
                 'valid': True
             }
             return ret
+        except FatalDraftException as e:
+            if getattr(e, '__cause__', None):
+                raise e.__cause__
         except MarshmallowErrors as e:
             self.save_marshmallow_error(e)
         except SchemaValidationError as e:

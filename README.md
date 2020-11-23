@@ -548,3 +548,27 @@ should be modified for draft record or not.
 
 Might be. See [record.py](oarepo_records_draft/record.py) to see which index must be used
 for draft records.
+
+### I really need to raise exception when user submits incorrect data
+
+Think twice if you really want to do it, as it prevents users to pass incomplete
+record and work on it later.
+
+If you really want to abort the process, raise an instance of ``FatalDraftException``
+from within the marshmallow validation. This exception will cause the validation to terminate
+and the draft record will not be modified/created.
+
+You can use the exception to re-raise a custom exception, for example:
+
+```python
+from oarepo_records_draft import FatalDraftException
+from flask import abort
+try:
+    # do something that can lead to
+    abort(403)
+except Exception as e:
+    raise FatalDraftException() from e
+```
+
+The wrapped exception will later be retrieved and passed on to later stages of processing,
+and the correct HTTP 403 error page/json will be sent to the user.
