@@ -30,6 +30,7 @@ import invenio_records_rest.views
 from invenio_rest import InvenioREST
 from invenio_search import InvenioSearch, current_search_client
 from invenio_search.cli import destroy, init
+from oarepo_validate.ext import OARepoValidate
 from sqlalchemy_continuum import make_versioned
 
 from oarepo_records_draft.ext import RecordsDraft
@@ -99,6 +100,7 @@ def app(base_app):
     InvenioRecords(base_app)
     InvenioPIDStore(base_app)
     base_app.url_map.converters['pid'] = PIDConverter
+    OARepoValidate(base_app)
     SampleExt(base_app)
 
     try:
