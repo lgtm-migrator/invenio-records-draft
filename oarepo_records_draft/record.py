@@ -1,3 +1,5 @@
+import os
+
 from invenio_indexer.utils import schema_to_index
 from invenio_records_rest.loaders.marshmallow import MarshmallowErrors
 from invenio_search import current_search
@@ -9,6 +11,8 @@ from oarepo_records_draft.merge import draft_merger
 from oarepo_records_draft.proxies import current_drafts
 from oarepo_records_draft.types import RecordEndpointConfiguration
 
+
+RUNNING_IN_TRAVIS = os.environ.get('TRAVIS', False)
 
 @after_marshmallow_validate.connect
 def after_validation(sender, record=None, context=None, result=None, error=None, **validate_kwargs):
@@ -39,6 +43,9 @@ class DraftRecordMixin:
         except SchemaValidationError as e:
             self.save_schema_error(e)
         except Exception as e:
+            if RUNNING_IN_TRAVIS:
+                import traceback
+                traceback.print_exc()
             self.save_generic_error(e)
 
     def save_marshmallow_error(self, err: MarshmallowErrors):
