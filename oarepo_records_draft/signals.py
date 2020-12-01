@@ -45,7 +45,7 @@ A notification called before a record is published
 :param collected_records: All collected records
 """
 
-after_publish_record = _signals.signal('before_publish_record')
+after_publish_record = _signals.signal('after_publish_record')
 """
 A notification called after a record is published
 
