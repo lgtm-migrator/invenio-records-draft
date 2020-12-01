@@ -70,7 +70,7 @@ class DraftRecordMixin:
             'valid': False,
             'errors': {
                 'jsonschema': [{
-                    'field': '.'.join(err.path),
+                    'field': '.'.join(str(path_element) for path_element in err.path),
                     'message': err.message
                 }]
             }
