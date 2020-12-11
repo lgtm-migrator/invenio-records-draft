@@ -26,6 +26,7 @@ def test_draft_create(app, db, client, prepare_es, test_users):
                 },
                 "valid": False
             },
+            'oarepo:draft': True,
             "title": "test"
         },
         "revision": 0
@@ -55,7 +56,9 @@ def test_draft_create(app, db, client, prepare_es, test_users):
                                         'field': 'title',
                                         'message': 'Shorter than minimum length 5.'
                                     }]},
-                            'valid': False},
+                            'valid': False
+                        },
+                        'oarepo:draft': True,
                         'title': 'test'},
                     'revision': 0,
                 }],
@@ -88,6 +91,7 @@ def test_draft_create(app, db, client, prepare_es, test_users):
                         'oarepo:validity': {
                             'valid': True
                         },
+                        'oarepo:draft': True,
                         'title': 'longer test'
                     },
                     'revision': 1,
@@ -120,6 +124,7 @@ def test_draft_create(app, db, client, prepare_es, test_users):
             'oarepo:validity': {
                 'valid': True
             },
+            'oarepo:draft': True,
             'title': 'longer test'
         },
         'revision': 1,

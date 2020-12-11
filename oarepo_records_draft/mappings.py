@@ -57,6 +57,9 @@ def setup_draft_mappings(managed_records: DraftManagedRecords, app):
 
 
 draft_validation_json = {
+    "oarepo:draft": {
+        "type": "boolean"
+    },
     "oarepo:validity": {
         "type": "object",
         "properties": {

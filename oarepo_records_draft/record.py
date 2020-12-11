@@ -11,8 +11,8 @@ from oarepo_records_draft.merge import draft_merger
 from oarepo_records_draft.proxies import current_drafts
 from oarepo_records_draft.types import RecordEndpointConfiguration
 
-
 RUNNING_IN_TRAVIS = os.environ.get('TRAVIS', False)
+
 
 @after_marshmallow_validate.connect
 def after_validation(sender, record=None, context=None, result=None, error=None, **validate_kwargs):
@@ -25,11 +25,16 @@ def after_validation(sender, record=None, context=None, result=None, error=None,
 
 
 class DraftRecordMixin:
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self['oarepo:draft'] = True
 
     def validate(self, **kwargs):
         try:
             if 'oarepo:validity' in self:
                 del self['oarepo:validity']
+            if 'oarepo:draft' in self:
+                del self['oarepo:draft']
             ret = super().validate(draft_validation=True, **kwargs)
             self['oarepo:validity'] = {
                 'valid': True
@@ -48,6 +53,8 @@ class DraftRecordMixin:
                 import traceback
                 traceback.print_exc()
             self.save_generic_error(e)
+        finally:
+            self['oarepo:draft'] = True
 
     def save_marshmallow_error(self, err: MarshmallowErrors):
         errors = []

@@ -309,6 +309,7 @@ class RecordsDraftState:
                 raise InvalidRecordException('Can not publish invalid record',
                                              errors=metadata['oarepo:validity']['errors'])
             del metadata['oarepo:validity']
+        metadata.pop('oarepo:draft', True)
 
         try:
             published_pid = PersistentIdentifier.get(published_pid_type, draft_pid.pid_value)

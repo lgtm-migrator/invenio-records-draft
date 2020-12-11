@@ -9,7 +9,8 @@ def test_valid_record(app):
         'title': 'longer',
         'oarepo:validity': {
             'valid': True
-        }
+        },
+        'oarepo:draft': True
     }
 
 
@@ -30,7 +31,8 @@ def test_invalid_schema(app):
                             'Additional properties are not allowed (\'extra\' was unexpected)'
                     }]
             }
-        }
+        },
+        'oarepo:draft': True
     }
 
 
@@ -49,5 +51,6 @@ def test_invalid_marshmallow(app):
                         'Shorter than minimum length 5.'
                 }]
             }
-        }
+        },
+        'oarepo:draft': True
     }
