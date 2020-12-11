@@ -46,7 +46,7 @@ jobs:
 
       - name: Test with pytest
         run: |
-          pytest tests
+          ./run-tests.sh
 
       - name: Check manifest
         run: |
