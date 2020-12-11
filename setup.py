@@ -5,6 +5,8 @@ from os import path
 
 from setuptools import setup
 
+OAREPO_VERSION = os.environ.get('OAREPO_VERSION', '3.3')
+
 install_requires = [
     'wrapt>=1.11.2',
     'oarepo_validate',
@@ -12,10 +14,7 @@ install_requires = [
 ]
 
 tests_require = [
-    'pytest-invenio[docs]==1.3.4',         # hack
-    'oarepo',
-    # 'oarepo[tests]',
-    'pytest-cov'
+    f'oarepo[tests]~={OAREPO_VERSION}'
 ]
 
 extras_require = {
