@@ -12,6 +12,9 @@ def test_draft_mapping(app):
         'mappings': {
             'dynamic': False,
             'properties': {
+                "oarepo:draft": {
+                    "type": "boolean"
+                },
                 'oarepo:validity': {
                     'properties': {
                         "errors": {
