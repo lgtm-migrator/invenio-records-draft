@@ -198,3 +198,8 @@ class Endpoints:
     def items(self):
         self.setup_endpoints()
         return self.endpoints.items()
+
+    def get(self, *args, **kwargs):
+        self.setup_endpoints()
+        return self.endpoints.get(*args, **kwargs)
+
