@@ -1,6 +1,7 @@
 import copy
 import functools
 import logging
+import traceback
 import uuid
 from typing import List, Union
 
@@ -179,7 +180,7 @@ class RecordsDraftState:
                 endpoint = self.endpoint_for_pid_type(draft_pid.pid_type)
                 assert endpoint.published is False
                 published_record_class = endpoint.paired_endpoint.record_class
-                published_record_pid_type = endpoint.paired_endpoint.rest_name
+                published_record_pid_type = endpoint.paired_endpoint.pid_type
                 published_record, published_pid = self.publish_record_internal(
                     draft_record_context, published_record_class,
                     published_record_pid_type, collected_records
@@ -195,11 +196,18 @@ class RecordsDraftState:
             for draft_record, published_record in result:
                 # delete the record
                 draft_record.record.delete()
+                draft_indexer = self.indexer_for_record(draft_record.record)
                 try:
-                    RecordIndexer().delete(draft_record.record, refresh=True)
+                    if draft_indexer and draft_indexer.record_to_index(draft_record.record)[0]:
+                        draft_indexer.delete(draft_record.record, refresh=True)
                 except:
                     logger.debug('Error deleting record', draft_record.record_pid)
-                self.indexer_for_record(published_record.record).index(published_record.record)
+                    traceback.print_exc()
+
+                published_indexer = self.indexer_for_record(published_record.record)
+                if published_indexer and published_indexer.record_to_index(published_record.record)[0]:
+                    published_indexer.index(published_record.record)
+
                 # mark all object pids as deleted
                 all_pids = PersistentIdentifier.query.filter(
                     PersistentIdentifier.object_type == draft_record.record_pid.object_type,
@@ -215,6 +223,8 @@ class RecordsDraftState:
                 indices.add(self.index_for_record(draft_record.record))
 
         for index in indices:
+            if not index:
+                continue
             current_search_client.indices.refresh(index=index)
             current_search_client.indices.flush(index=index)
 
@@ -259,12 +269,16 @@ class RecordsDraftState:
 
             for published_record, draft_record in result:
                 draft_record.record.commit()
-                self.indexer_for_record(draft_record.record).index(draft_record.record)
+                draft_indexer = self.indexer_for_record(draft_record.record)
+                if draft_indexer and draft_indexer.record_to_index(draft_record.record)[0]:
+                    draft_indexer.index(draft_record.record)
 
                 indices.add(self.index_for_record(published_record.record))
                 indices.add(self.index_for_record(draft_record.record))
 
         for index in indices:
+            if not index:
+                continue
             current_search_client.indices.refresh(index=index)
             current_search_client.indices.flush(index=index)
 
@@ -310,12 +324,18 @@ class RecordsDraftState:
             for published_record, draft_record in result:
                 # delete the record
                 published_record.record.delete()
+                published_indexer = self.indexer_for_record(published_record.record)
                 try:
-                    RecordIndexer().delete(published_record.record, refresh=True)
+                    if published_indexer and published_indexer.record_to_index(published_record.record)[0]:
+                        RecordIndexer().delete(published_record.record, refresh=True)
                 except:
                     logger.debug('Error deleting record', published_record.record_pid)
+                    traceback.print_exc()
+
                 draft_record.record.commit()
-                self.indexer_for_record(draft_record.record).index(draft_record.record)
+                draft_indexer = self.indexer_for_record(draft_record.record)
+                if draft_indexer and draft_indexer.record_to_index(draft_record.record)[0]:
+                    draft_indexer.index(draft_record.record)
                 # mark all object pids as deleted
                 all_pids = PersistentIdentifier.query.filter(
                     PersistentIdentifier.object_type == published_record.record_pid.object_type,
@@ -329,6 +349,8 @@ class RecordsDraftState:
                 indices.add(self.index_for_record(draft_record.record))
 
         for index in indices:
+            if not index:
+                continue
             current_search_client.indices.refresh(index=index)
             current_search_client.indices.flush(index=index)
 
@@ -490,7 +512,11 @@ class RecordsDraftState:
 
     def index_for_record(self, record):
         indexer: RecordIndexer = self.indexer_for_record(record)
+        if not indexer:
+            return None
         index, doctype = indexer.record_to_index(record)
+        if not index:
+            return None
         return indexer._prepare_index(index, doctype)[0]
 
 
