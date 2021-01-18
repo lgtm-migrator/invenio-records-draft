@@ -3,6 +3,7 @@ import functools
 import logging
 import traceback
 import uuid
+from collections import namedtuple
 from typing import List, Union
 
 import invenio_indexer.config
@@ -28,6 +29,10 @@ from .types import RecordContext, Endpoints
 from .views import register_blueprint
 
 logger = logging.getLogger(__name__)
+
+PublishedDraftRecordPair = namedtuple(
+    'PublishedDraftRecordPair',
+    'published_context draft_context primary')
 
 
 def setup_indexer(app):
@@ -172,7 +177,7 @@ class RecordsDraftState:
 
             before_publish.send(collected_records)
 
-            result = []
+            result: List[PublishedDraftRecordPair] = []
 
             # publish in reversed order
             for draft_record_context in reversed(collected_records):
@@ -187,40 +192,45 @@ class RecordsDraftState:
                 )
                 published_record_context = RecordContext(record=published_record,
                                                          record_pid=published_pid)
-                result.append((draft_record_context, published_record_context))
+                result.append(PublishedDraftRecordPair(
+                    draft_context=draft_record_context,
+                    published_context=published_record_context,
+                    primary=draft_record_context.record == record.record))
                 draft_record_context.published_record_context = published_record_context
                 published_record_context.draft_record_context = draft_record_context
 
             after_publish.send(result)
 
-            for draft_record, published_record in result:
+            for rp in result:
                 # delete the record
-                draft_record.record.delete()
-                draft_indexer = self.indexer_for_record(draft_record.record)
+                draft_record_context = rp.draft_context
+                published_record_context = rp.published_context
+                draft_record_context.record.delete()
+                draft_indexer = self.indexer_for_record(draft_record_context.record)
                 try:
-                    if draft_indexer and draft_indexer.record_to_index(draft_record.record)[0]:
-                        draft_indexer.delete(draft_record.record, refresh=True)
+                    if draft_indexer and draft_indexer.record_to_index(draft_record_context.record)[0]:
+                        draft_indexer.delete(draft_record_context.record, refresh=True)
                 except:
-                    logger.debug('Error deleting record', draft_record.record_pid)
+                    logger.debug('Error deleting record', draft_record_context.record_pid)
                     traceback.print_exc()
 
-                published_indexer = self.indexer_for_record(published_record.record)
-                if published_indexer and published_indexer.record_to_index(published_record.record)[0]:
-                    published_indexer.index(published_record.record)
+                published_indexer = self.indexer_for_record(published_record_context.record)
+                if published_indexer and published_indexer.record_to_index(published_record_context.record)[0]:
+                    published_indexer.index(published_record_context.record)
 
                 # mark all object pids as deleted
                 all_pids = PersistentIdentifier.query.filter(
-                    PersistentIdentifier.object_type == draft_record.record_pid.object_type,
-                    PersistentIdentifier.object_uuid == draft_record.record_pid.object_uuid,
+                    PersistentIdentifier.object_type == draft_record_context.record_pid.object_type,
+                    PersistentIdentifier.object_uuid == draft_record_context.record_pid.object_uuid,
                 ).all()
                 for rec_pid in all_pids:
                     if not rec_pid.is_deleted():
                         rec_pid.delete()
 
-                published_record.record.commit()
+                published_record_context.record.commit()
 
-                indices.add(self.index_for_record(published_record.record))
-                indices.add(self.index_for_record(draft_record.record))
+                indices.add(self.index_for_record(published_record_context.record))
+                indices.add(self.index_for_record(draft_record_context.record))
 
         for index in indices:
             if not index:
@@ -228,6 +238,7 @@ class RecordsDraftState:
             current_search_client.indices.refresh(index=index)
             current_search_client.indices.flush(index=index)
 
+        result.reverse()
         return result
 
     def edit(self, record: Union[RecordContext, Record], record_pid=None):
@@ -246,7 +257,7 @@ class RecordsDraftState:
 
             before_edit.send(collected_records)
 
-            result = []
+            result: List[PublishedDraftRecordPair] = []
             # publish in reversed order
             for published_record_context in reversed(collected_records):
                 published_pid = published_record_context.record_pid
@@ -260,21 +271,26 @@ class RecordsDraftState:
                     collected_records
                 )
                 draft_record_context = RecordContext(record=draft_record, record_pid=draft_pid)
-                result.append((published_record_context, draft_record_context))
+                result.append(PublishedDraftRecordPair(
+                    published_context=published_record_context,
+                    draft_context=draft_record_context,
+                    primary=published_record_context.record == record.record))
 
                 draft_record_context.published_record_context = published_record_context
                 published_record_context.draft_record_context = draft_record_context
 
             after_edit.send(result)
 
-            for published_record, draft_record in result:
-                draft_record.record.commit()
-                draft_indexer = self.indexer_for_record(draft_record.record)
-                if draft_indexer and draft_indexer.record_to_index(draft_record.record)[0]:
-                    draft_indexer.index(draft_record.record)
+            for rp in result:
+                published_record_context = rp.published_context
+                draft_record_context = rp.draft_context
+                draft_record_context.record.commit()
+                draft_indexer = self.indexer_for_record(draft_record_context.record)
+                if draft_indexer and draft_indexer.record_to_index(draft_record_context.record)[0]:
+                    draft_indexer.index(draft_record_context.record)
 
-                indices.add(self.index_for_record(published_record.record))
-                indices.add(self.index_for_record(draft_record.record))
+                indices.add(self.index_for_record(published_record_context.record))
+                indices.add(self.index_for_record(draft_record_context.record))
 
         for index in indices:
             if not index:
@@ -282,6 +298,7 @@ class RecordsDraftState:
             current_search_client.indices.refresh(index=index)
             current_search_client.indices.flush(index=index)
 
+        result.reverse()
         return result
 
     def unpublish(self, record: Union[RecordContext, Record], record_pid=None):
@@ -300,7 +317,7 @@ class RecordsDraftState:
 
             before_unpublish.send(collected_records)
 
-            result = []
+            result: List[PublishedDraftRecordPair] = []
             # publish in reversed order
             for published_record_context in reversed(collected_records):
                 published_pid = published_record_context.record_pid
@@ -314,39 +331,44 @@ class RecordsDraftState:
                     collected_records
                 )
                 draft_record_context = RecordContext(record=draft_record, record_pid=draft_pid)
-                result.append((published_record_context, draft_record_context))
+                result.append(PublishedDraftRecordPair(
+                    published_context=published_record_context,
+                    draft_context=draft_record_context,
+                    primary=published_record_context.record == record.record))
 
                 draft_record_context.published_record_context = published_record_context
                 published_record_context.draft_record_context = draft_record_context
 
             after_unpublish.send(result)
 
-            for published_record, draft_record in result:
+            for rp in result:
+                published_record_context = rp.published_context
+                draft_record_context = rp.draft_context
                 # delete the record
-                published_record.record.delete()
-                published_indexer = self.indexer_for_record(published_record.record)
+                published_record_context.record.delete()
+                published_indexer = self.indexer_for_record(published_record_context.record)
                 try:
-                    if published_indexer and published_indexer.record_to_index(published_record.record)[0]:
-                        RecordIndexer().delete(published_record.record, refresh=True)
+                    if published_indexer and published_indexer.record_to_index(published_record_context.record)[0]:
+                        RecordIndexer().delete(published_record_context.record, refresh=True)
                 except:
-                    logger.debug('Error deleting record', published_record.record_pid)
+                    logger.debug('Error deleting record', published_record_context.record_pid)
                     traceback.print_exc()
 
-                draft_record.record.commit()
-                draft_indexer = self.indexer_for_record(draft_record.record)
-                if draft_indexer and draft_indexer.record_to_index(draft_record.record)[0]:
-                    draft_indexer.index(draft_record.record)
+                draft_record_context.record.commit()
+                draft_indexer = self.indexer_for_record(draft_record_context.record)
+                if draft_indexer and draft_indexer.record_to_index(draft_record_context.record)[0]:
+                    draft_indexer.index(draft_record_context.record)
                 # mark all object pids as deleted
                 all_pids = PersistentIdentifier.query.filter(
-                    PersistentIdentifier.object_type == published_record.record_pid.object_type,
-                    PersistentIdentifier.object_uuid == published_record.record_pid.object_uuid,
+                    PersistentIdentifier.object_type == published_record_context.record_pid.object_type,
+                    PersistentIdentifier.object_uuid == published_record_context.record_pid.object_uuid,
                 ).all()
                 for rec_pid in all_pids:
                     if not rec_pid.is_deleted():
                         rec_pid.delete()
 
-                indices.add(self.index_for_record(published_record.record))
-                indices.add(self.index_for_record(draft_record.record))
+                indices.add(self.index_for_record(published_record_context.record))
+                indices.add(self.index_for_record(draft_record_context.record))
 
         for index in indices:
             if not index:
@@ -354,6 +376,7 @@ class RecordsDraftState:
             current_search_client.indices.refresh(index=index)
             current_search_client.indices.flush(index=index)
 
+        result.reverse()
         return result
 
     def publish_record_internal(self, record_context,
@@ -376,7 +399,7 @@ class RecordsDraftState:
 
         before_publish_record.send(draft_record, metadata=metadata,
                                    record_context=record_context,
-                                   record=record_context, # back compatibility, deprecated
+                                   record=record_context,  # back compatibility, deprecated
                                    collected_records=collected_records)
 
         if published_pid:
