@@ -26,6 +26,7 @@ class UnpublishRecordAction(MethodView):
         endpoint = 'invenio_records_rest.{0}_item'.format(self.endpoint.paired_endpoint.rest_name)
         url = url_for(endpoint, pid_value=pid.pid_value, _external=True)
         response = jsonify({
+            "status": "ok",
             "links": {
                 "draft": url
             }

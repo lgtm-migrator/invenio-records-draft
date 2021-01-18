@@ -1,3 +1,4 @@
+import copy
 import functools
 import logging
 import uuid
@@ -72,9 +73,12 @@ class RecordsDraftState:
 
         while records_to_publish_queue:
             rec = records_to_publish_queue.pop(0)
-            for _, collected_records in collect_records.send(record,
-                                                             record=rec,
-                                                             action=action):
+            for _, collected_records in collect_records.send(
+                    record,
+                    record_context=rec,
+                    record=rec,  # back compatibility, deprecated
+                    action=action
+            ):
                 # collect_record: RecordContext
                 for collect_record in (collected_records or []):
                     if collect_record.record_uuid in records_to_publish_map:
@@ -144,9 +148,14 @@ class RecordsDraftState:
             self._extra_actions = extra_actions
         return self._extra_actions
 
-    def publish(self, record: Union[RecordContext, Record], record_pid=None):
+    def publish(
+            self, record: Union[RecordContext, Record], record_pid=None,
+            require_valid=True
+    ):
         if isinstance(record, Record):
             record = RecordContext(record=record, record_pid=record_pid)
+
+        indices = set()
 
         with db.session.begin_nested():
             # collect all records to be published (for example, references etc)
@@ -155,24 +164,31 @@ class RecordsDraftState:
             # for each collected record, check if can be published
             for draft_record in collected_records:
                 check_can_publish.send(record, record=draft_record)
+                if 'oarepo:validity' in draft_record.record:
+                    if require_valid and not draft_record.record['oarepo:validity']['valid']:
+                        raise InvalidRecordException('Can not publish invalid record',
+                                                     errors=draft_record.record['oarepo:validity']['errors'])
 
             before_publish.send(collected_records)
 
             result = []
+
             # publish in reversed order
-            for draft_record in reversed(collected_records):
-                draft_pid = draft_record.record_pid
+            for draft_record_context in reversed(collected_records):
+                draft_pid = draft_record_context.record_pid
                 endpoint = self.endpoint_for_pid_type(draft_pid.pid_type)
                 assert endpoint.published is False
                 published_record_class = endpoint.paired_endpoint.record_class
                 published_record_pid_type = endpoint.paired_endpoint.rest_name
                 published_record, published_pid = self.publish_record_internal(
-                    draft_record, published_record_class,
+                    draft_record_context, published_record_class,
                     published_record_pid_type, collected_records
                 )
                 published_record_context = RecordContext(record=published_record,
                                                          record_pid=published_pid)
-                result.append((draft_record, published_record_context))
+                result.append((draft_record_context, published_record_context))
+                draft_record_context.published_record_context = published_record_context
+                published_record_context.draft_record_context = draft_record_context
 
             after_publish.send(result)
 
@@ -195,14 +211,20 @@ class RecordsDraftState:
 
                 published_record.record.commit()
 
-        current_search_client.indices.refresh()
-        current_search_client.indices.flush()
+                indices.add(self.index_for_record(published_record.record))
+                indices.add(self.index_for_record(draft_record.record))
+
+        for index in indices:
+            current_search_client.indices.refresh(index=index)
+            current_search_client.indices.flush(index=index)
 
         return result
 
     def edit(self, record: Union[RecordContext, Record], record_pid=None):
         if isinstance(record, Record):
             record = RecordContext(record=record, record_pid=record_pid)
+
+        indices = set()
 
         with db.session.begin_nested():
             # collect all records to be draft (for example, references etc)
@@ -216,19 +238,22 @@ class RecordsDraftState:
 
             result = []
             # publish in reversed order
-            for published_record in reversed(collected_records):
-                published_pid = published_record.record_pid
+            for published_record_context in reversed(collected_records):
+                published_pid = published_record_context.record_pid
                 endpoint = self.endpoint_for_pid_type(published_pid.pid_type)
                 assert endpoint.published
                 draft_record_class = endpoint.paired_endpoint.record_class
                 draft_record_pid_type = endpoint.paired_endpoint.rest_name
                 draft_record, draft_pid = self.draft_record_internal(
-                    published_record, published_pid,
+                    published_record_context, published_pid,
                     draft_record_class, draft_record_pid_type,
                     collected_records
                 )
                 draft_record_context = RecordContext(record=draft_record, record_pid=draft_pid)
-                result.append((published_record, draft_record_context))
+                result.append((published_record_context, draft_record_context))
+
+                draft_record_context.published_record_context = published_record_context
+                published_record_context.draft_record_context = draft_record_context
 
             after_edit.send(result)
 
@@ -236,14 +261,20 @@ class RecordsDraftState:
                 draft_record.record.commit()
                 self.indexer_for_record(draft_record.record).index(draft_record.record)
 
-        current_search_client.indices.refresh()
-        current_search_client.indices.flush()
+                indices.add(self.index_for_record(published_record.record))
+                indices.add(self.index_for_record(draft_record.record))
+
+        for index in indices:
+            current_search_client.indices.refresh(index=index)
+            current_search_client.indices.flush(index=index)
 
         return result
 
     def unpublish(self, record: Union[RecordContext, Record], record_pid=None):
         if isinstance(record, Record):
             record = RecordContext(record=record, record_pid=record_pid)
+
+        indices = set()
 
         with db.session.begin_nested():
             # collect all records to be draft (for example, references etc)
@@ -257,19 +288,22 @@ class RecordsDraftState:
 
             result = []
             # publish in reversed order
-            for published_record in reversed(collected_records):
-                published_pid = published_record.record_pid
+            for published_record_context in reversed(collected_records):
+                published_pid = published_record_context.record_pid
                 endpoint = self.endpoint_for_pid_type(published_pid.pid_type)
                 assert endpoint.published
                 draft_record_class = endpoint.paired_endpoint.record_class
                 draft_record_pid_type = endpoint.paired_endpoint.rest_name
                 draft_record, draft_pid = self.draft_record_internal(
-                    published_record, published_pid,
+                    published_record_context, published_pid,
                     draft_record_class, draft_record_pid_type,
                     collected_records
                 )
                 draft_record_context = RecordContext(record=draft_record, record_pid=draft_pid)
-                result.append((published_record, draft_record_context))
+                result.append((published_record_context, draft_record_context))
+
+                draft_record_context.published_record_context = published_record_context
+                published_record_context.draft_record_context = draft_record_context
 
             after_unpublish.send(result)
 
@@ -291,8 +325,12 @@ class RecordsDraftState:
                     if not rec_pid.is_deleted():
                         rec_pid.delete()
 
-        current_search_client.indices.refresh()
-        current_search_client.indices.flush()
+                indices.add(self.index_for_record(published_record.record))
+                indices.add(self.index_for_record(draft_record.record))
+
+        for index in indices:
+            current_search_client.indices.refresh(index=index)
+            current_search_client.indices.flush(index=index)
 
         return result
 
@@ -302,12 +340,10 @@ class RecordsDraftState:
                                 collected_records):
         draft_record = record_context.record
         draft_pid = record_context.record_pid
+
         # clone metadata
-        metadata = dict(draft_record)
+        metadata = copy.deepcopy(dict(draft_record))
         if 'oarepo:validity' in metadata:
-            if not metadata['oarepo:validity']['valid']:
-                raise InvalidRecordException('Can not publish invalid record',
-                                             errors=metadata['oarepo:validity']['errors'])
             del metadata['oarepo:validity']
         metadata.pop('oarepo:draft', True)
 
@@ -316,7 +352,9 @@ class RecordsDraftState:
         except PIDDoesNotExistError:
             published_pid = None
 
-        before_publish_record.send(draft_record, metadata=metadata, record=record_context,
+        before_publish_record.send(draft_record, metadata=metadata,
+                                   record_context=record_context,
+                                   record=record_context, # back compatibility, deprecated
                                    collected_records=collected_records)
 
         if published_pid:
@@ -384,10 +422,11 @@ class RecordsDraftState:
 
     def draft_record_internal(self, published_record_context, published_pid,
                               draft_record_class, draft_pid_type, collected_records):
-        metadata = dict(published_record_context.record)
+        metadata = copy.deepcopy(dict(published_record_context.record))
 
         before_unpublish_record.send(published_record_context.record, metadata=metadata,
-                                     record=published_record_context,
+                                     record_context=published_record_context,
+                                     record=published_record_context,  # back compatibility, deprecated
                                      collected_records=collected_records)
 
         try:
@@ -448,6 +487,11 @@ class RecordsDraftState:
         draft_record.commit()
 
         return draft_record, draft_pid
+
+    def index_for_record(self, record):
+        indexer: RecordIndexer = self.indexer_for_record(record)
+        index, doctype = indexer.record_to_index(record)
+        return indexer._prepare_index(index, doctype)[0]
 
 
 class RecordsDraft(object):

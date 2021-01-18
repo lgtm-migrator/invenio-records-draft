@@ -24,6 +24,37 @@ def after_validation(sender, record=None, context=None, result=None, error=None,
             record.update(r)
 
 
+class InvalidRecordAllowedMixin:
+
+    IGNORE_MARSHMALLOW_ERRORS = True
+    IGNORE_SCHEMA_ERRORS = True
+    IGNORE_OTHER_ERRORS = False
+    IGNORED_ERROR_HANDLER = None
+
+    def validate(self, **kwargs):
+        force_validation = kwargs.pop('force_validation', False)
+        if force_validation:
+            return super().validate(**kwargs)
+
+        try:
+            return super().validate(**kwargs)
+        except MarshmallowErrors as e:
+            if self.IGNORED_ERROR_HANDLER:
+                return self.IGNORED_ERROR_HANDLER(self, e)
+            if not self.IGNORE_MARSHMALLOW_ERRORS:
+                raise
+        except SchemaValidationError as e:
+            if self.IGNORED_ERROR_HANDLER:
+                return self.IGNORED_ERROR_HANDLER(self, e)
+            if not self.IGNORE_SCHEMA_ERRORS:
+                raise
+        except Exception as e:
+            if self.IGNORED_ERROR_HANDLER:
+                return self.IGNORED_ERROR_HANDLER(self, e)
+            if not self.IGNORE_OTHER_ERRORS:
+                raise
+
+
 class DraftRecordMixin:
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

@@ -140,7 +140,8 @@ def test_draft_create(app, db, client, prepare_es, test_users):
     assert resp == {
         "links": {
             "published": "http://localhost:5000/records/1"
-        }
+        },
+        "status": "ok"
     }
 
     resp = client.get('/draft/records/1')
@@ -192,7 +193,8 @@ def test_draft_create(app, db, client, prepare_es, test_users):
     assert resp == {
         "links": {
             "published": "http://localhost:5000/records/1"
-        }
+        },
+        "status": "ok"
     }
 
     # unpublish the record - at first, no permissions
@@ -214,7 +216,8 @@ def test_draft_create(app, db, client, prepare_es, test_users):
     assert resp == {
         "links": {
             "draft": "http://localhost:5000/draft/records/1"
-        }
+        },
+        "status": "ok"
     }
 
     # record does not exist during edit
@@ -238,5 +241,6 @@ def test_draft_create(app, db, client, prepare_es, test_users):
     assert resp == {
         "links": {
             "published": "http://localhost:5000/records/1"
-        }
+        },
+        "status": "ok"
     }

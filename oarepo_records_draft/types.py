@@ -159,6 +159,12 @@ class RecordContext:
         # these two are filled during the record collection phase
         self.draft_record_url = None
         self.published_record_url = None
+
+        # published record context if this is draft context
+        self.published_record_context = None
+
+        # draft record context if this is published context
+        self.draft_record_context = None
         for k, v in kwargs.items():
             setattr(self, k, v)
 

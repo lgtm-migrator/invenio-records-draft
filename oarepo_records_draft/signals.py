@@ -16,12 +16,12 @@ class CollectAction(Enum):
 collect_records = _signals.signal('collect_records')
 """Signal sent to collect all objects that should be published.
 
-:param  record: the record being published
+:param  record_context: the record being published
 :param  action: CollectAction
 :return list of RecordContext instances of records that should be published
 """
 
-check_can_publish = _signals.signal('check_publish')
+check_can_publish = _signals.signal('check_can_publish')
 """Check if the record can be published. Called from within a request context.
 Should raise an exception if the caller does not have permission to publish
 or if there is any condition prohibiting the publishing.
@@ -41,7 +41,7 @@ before_publish_record = _signals.signal('before_publish_record')
 A notification called before a record is published
 
 :param metadata: metadata of the published record
-:param record: RecordContext of the draft record
+:param record_context: RecordContext of the draft record
 :param collected_records: All collected records
 """
 
@@ -61,7 +61,7 @@ A notification called after the records have been published
 has already been invalidated.
 """
 
-check_can_unpublish = _signals.signal('check_unpublish')
+check_can_unpublish = _signals.signal('check_can_unpublish')
 """Check if the record can be unpublished. Called from within a request context.
 Should raise an exception if the caller does not have permission to unpublish
 or if there is any condition prohibiting the unpublishing.
@@ -76,12 +76,12 @@ A notification called before the records are unpublished
 :param records: a list of records to unpublish
 """
 
-before_unpublish_record = _signals.signal('before_publish_record')
+before_unpublish_record = _signals.signal('before_unpublish_record')
 """
 A notification called before a record is published
 
 :param metadata: metadata of the published record
-:param record: RecordContext of the draft record
+:param record_context: RecordContext of the draft record
 :param collected_records: All collected records
 """
 
@@ -93,7 +93,7 @@ A notification called after the records have been unpublished
 record is marked as unpublished (PID suspended)
 """
 
-check_can_edit = _signals.signal('check_edit')
+check_can_edit = _signals.signal('check_can_edit')
 """Check if the record can be edited. Called from within a request context.
 Should raise an exception if the caller does not have permission to edit
 or if there is any condition prohibiting the editing.
@@ -116,7 +116,7 @@ A notification called after the records have been prepared for editing
 record is marked as is.
 """
 
-file_before_uploaded = _signals.signal('file_uploaded')
+file_before_uploaded = _signals.signal('file_before_uploaded')
 """
 A notification aka rest's file_uploaded but tied to a record and called before the file object has been created
 
