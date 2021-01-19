@@ -11,6 +11,7 @@ import pkg_resources
 from invenio_base.signals import app_loaded
 from invenio_base.utils import obj_or_import_string
 from invenio_db import db
+from invenio_files_rest.models import ObjectVersion, ObjectVersionTag
 from invenio_indexer.api import RecordIndexer
 from invenio_indexer.utils import schema_to_index
 from invenio_pidstore.errors import PIDDoesNotExistError
@@ -24,7 +25,7 @@ from oarepo_records_draft.types import DraftManagedRecords
 from .exceptions import InvalidRecordException
 from .signals import collect_records, CollectAction, check_can_publish, before_publish, after_publish, check_can_edit, \
     before_edit, after_edit, check_can_unpublish, before_unpublish, after_unpublish, before_publish_record, \
-    before_unpublish_record, after_publish_record
+    before_unpublish_record, after_publish_record, file_published
 from .types import RecordContext, Endpoints
 from .views import register_blueprint
 
@@ -433,11 +434,60 @@ class RecordsDraftState:
                                                     status=PIDStatus.REGISTERED,
                                                     object_type='rec', object_uuid=id)
 
+        if hasattr(draft_record, 'bucket'):
+            self._publish_files(draft_record, published_record)
+            published_record.files.flush()
+            db.session.add(published_record.model)
+
         after_publish_record.send(draft_record,
                                   published_record=published_record,
                                   published_pid=published_pid,
                                   collected_records=collected_records)
         return published_record, published_pid
+
+    def _publish_files(self, draft_record, published_record):
+        draft_by_key = {
+            x['key']: x for x in draft_record.get('_files', [])
+        }
+        published_files = []
+        for ov in ObjectVersion.get_by_bucket(bucket=draft_record.bucket):
+            file_md = copy.copy(draft_by_key.get(ov.key, {}))
+            if self._publish_file(draft_record, ov, published_record, file_md):
+                published_files.append(file_md)
+        published_record['_files'] = published_files
+
+    def _publish_file(self, draft_record, ov, published_record, file_md):
+        bucket = published_record.bucket
+        new_ob = ObjectVersion.create(
+            bucket,
+            ov.key,
+            _file_id=ov.file_id
+        )
+
+        tags = {tag.key: tag.value for tag in ov.tags}
+        for _, res in file_published.send(
+                draft_record, draft_record=draft_record,
+                published_record=published_record, object_version=ov,
+                tags=tags, metadata=file_md):
+            if res is False:
+                return False  # skip this file
+
+        for key, value in tags:
+            ObjectVersionTag.create_or_update(
+                object_version=new_ob,
+                key=key,
+                value=value)
+
+        return True
+
+    def index_for_record(self, record):
+        indexer: RecordIndexer = self.indexer_for_record(record)
+        if not indexer:
+            return None
+        index, doctype = indexer.record_to_index(record)
+        if not index:
+            return None
+        return indexer._prepare_index(index, doctype)[0]
 
     def _update_published_record(self, published_pid, metadata,
                                  timestamp, published_record_class):
@@ -533,15 +583,6 @@ class RecordsDraftState:
 
         return draft_record, draft_pid
 
-    def index_for_record(self, record):
-        indexer: RecordIndexer = self.indexer_for_record(record)
-        if not indexer:
-            return None
-        index, doctype = indexer.record_to_index(record)
-        if not index:
-            return None
-        return indexer._prepare_index(index, doctype)[0]
-
 
 class RecordsDraft(object):
     def __init__(self, app=None):
@@ -557,3 +598,26 @@ class RecordsDraft(object):
     def init_config(self, app):
         app.config.setdefault('RECORDS_DRAFT_ENDPOINTS', {})
         app.config['RECORDS_REST_ENDPOINTS'] = Endpoints(app, app.config.get('RECORDS_REST_ENDPOINTS', {}))
+
+
+@file_published.connect
+def replace_urls(sender, draft_record=None, published_record=None,
+                 object_version=None, tags=None, metadata=None, **kwargs):
+    if hasattr(draft_record, 'canonical_url') and hasattr(published_record, 'canonical_url'):
+        draft_url = draft_record.canonical_url
+        published_url = published_record.canonical_url
+
+        if not draft_url.endswith('/'):
+            draft_url += '/'
+
+        if not published_url.endswith('/'):
+            published_url += '/'
+
+        for tag_name, tag_value in list(tags.items()):
+            if tag_value.startswith(draft_url):
+                tags[tag_name] = published_url + tag_value[len(draft_url):]
+
+        for key, value in list(metadata.items()):
+            if isinstance(value, str) and value.startswith(draft_url):
+                metadata[key] = published_url + value[len(draft_url):]
+    return True

@@ -264,3 +264,17 @@ A notification send before file's metadata are modified
 :param pid    PersistentIdentifier of the record
 :param metadata form metadata to be set up
 """
+
+file_published = _signals.signal('file_published')
+"""
+A notification send when a file from draft is bound to a published file
+
+:param sender file's draft record
+:param draft_record draft record
+:param published_record published_record
+:param object_version the object version being published
+:param tags dictionary of tag name => tag value
+
+:return False if the file should be skipped, True/None if it should be included
+Can modify ``tags`` dictionary (replace urls etc)
+"""
