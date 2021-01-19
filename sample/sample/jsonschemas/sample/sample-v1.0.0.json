@@ -14,8 +14,11 @@
       "type": "string"
     },
     "_files": {
-      "type": "object",
-      "additionalProperties": true
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
     }
   },
   "additionalProperties": false
