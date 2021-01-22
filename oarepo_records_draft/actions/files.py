@@ -240,10 +240,18 @@ try:
 
                 content_type = multipart_content_type
 
+            # Construct additional file metadata props
+            form_props = request.form.to_dict(flat=False)
+            props = request.get_json() or {}
+            props.update(form_props)
+            props.pop('multipart_content_type', None)
+            props.pop('multipart', None)
+            props.pop('key', None)
+
             return create_record_file(pid, record,
                                       key, stream,
                                       content_type,
-                                      request.form,
+                                      props,
                                       self.endpoint_code)
 
 
