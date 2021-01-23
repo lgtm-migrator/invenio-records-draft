@@ -325,7 +325,7 @@ class RecordsDraftState:
                 endpoint = self.endpoint_for_pid_type(published_pid.pid_type)
                 assert endpoint.published
                 draft_record_class = endpoint.paired_endpoint.record_class
-                draft_record_pid_type = endpoint.paired_endpoint.rest_name
+                draft_record_pid_type = endpoint.paired_endpoint.pid_type
                 draft_record, draft_pid = self.draft_record_internal(
                     published_record_context, published_pid,
                     draft_record_class, draft_record_pid_type,
