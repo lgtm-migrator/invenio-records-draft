@@ -265,13 +265,15 @@ A notification send before file's metadata are modified
 :param metadata form metadata to be set up
 """
 
-file_published = _signals.signal('file_published')
+file_copied = _signals.signal('file_published')
 """
 A notification send when a file from draft is bound to a published file
 
-:param sender file's draft record
-:param draft_record draft record
-:param published_record published_record
+:param sender file's source record
+:param source_record source record
+:param target_record target_record
+:param source_record_context source record context
+:param target_record_context target_record context
 :param object_version the object version being published
 :param tags dictionary of tag name => tag value
 

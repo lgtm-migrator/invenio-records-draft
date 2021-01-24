@@ -19,13 +19,14 @@ from invenio_pidstore.models import PersistentIdentifier, PIDStatus
 from invenio_records import Record
 from invenio_search import current_search, current_search_client
 from oarepo_validate.record import AllowedSchemaMixin
+from sqlalchemy.orm.attributes import flag_modified
 
 from oarepo_records_draft.mappings import setup_draft_mappings
 from oarepo_records_draft.types import DraftManagedRecords
 from .exceptions import InvalidRecordException
 from .signals import collect_records, CollectAction, check_can_publish, before_publish, after_publish, check_can_edit, \
     before_edit, after_edit, check_can_unpublish, before_unpublish, after_unpublish, before_publish_record, \
-    before_unpublish_record, after_publish_record, file_published
+    before_unpublish_record, after_publish_record, file_copied
 from .types import RecordContext, Endpoints
 from .views import register_blueprint
 
@@ -412,14 +413,16 @@ class RecordsDraftState:
 
                 # and fetch the draft record and update its metadata
                 return self._update_published_record(
-                    published_pid, metadata, None, published_record_class)
+                    published_pid, metadata, None, published_record_class,
+                    record_context)
 
             elif published_pid.status == PIDStatus.REGISTERED:
                 # fetch the draft record and update its metadata
                 # if it is older than the published one
                 return self._update_published_record(
                     published_pid, metadata,
-                    draft_record.updated, published_record_class)
+                    draft_record.updated, published_record_class,
+                    record_context)
 
             raise NotImplementedError('Can not unpublish record to draft record '
                                       'with pid status %s. Only registered or deleted '
@@ -434,10 +437,9 @@ class RecordsDraftState:
                                                     status=PIDStatus.REGISTERED,
                                                     object_type='rec', object_uuid=id)
 
-        if hasattr(draft_record, 'bucket'):
-            self._publish_files(draft_record, published_record)
-            published_record.files.flush()
-            db.session.add(published_record.model)
+        self._copy_files_between_records(
+            draft_record, published_record,
+            record_context, RecordContext(record_pid=published_pid, record=published_record))
 
         after_publish_record.send(draft_record,
                                   published_record=published_record,
@@ -445,19 +447,36 @@ class RecordsDraftState:
                                   collected_records=collected_records)
         return published_record, published_pid
 
-    def _publish_files(self, draft_record, published_record):
+    def _copy_files_between_records(self, source_record, target_record,
+                                    source_record_context, target_record_context):
+        if hasattr(source_record, 'bucket'):
+            self._copy_files(source_record, target_record,
+                             source_record_context,
+                             target_record_context)
+
+            # directly save here without calling validation again
+            _model = target_record.model
+            assert '_files' in target_record
+            _model.json = dict(target_record)
+            flag_modified(_model, 'json')
+            db.session.merge(_model)
+
+    def _copy_files(self, source_record, target_record,
+                    source_record_context, target_record_context):
         draft_by_key = {
-            x['key']: x for x in draft_record.get('_files', [])
+            x['key']: x for x in source_record.get('_files', [])
         }
         published_files = []
-        for ov in ObjectVersion.get_by_bucket(bucket=draft_record.bucket):
+        for ov in ObjectVersion.get_by_bucket(bucket=source_record.bucket):
             file_md = copy.copy(draft_by_key.get(ov.key, {}))
-            if self._publish_file(draft_record, ov, published_record, file_md):
+            if self._copy_file(source_record, ov, target_record, file_md,
+                               source_record_context, target_record_context):
                 published_files.append(file_md)
-        published_record['_files'] = published_files
+        target_record['_files'] = published_files
 
-    def _publish_file(self, draft_record, ov, published_record, file_md):
-        bucket = published_record.bucket
+    def _copy_file(self, source_record, ov, target_record, file_md,
+                   source_record_context, target_record_context):
+        bucket = target_record.bucket
         new_ob = ObjectVersion.create(
             bucket,
             ov.key,
@@ -465,10 +484,12 @@ class RecordsDraftState:
         )
 
         tags = {tag.key: tag.value for tag in ov.tags}
-        for _, res in file_published.send(
-                draft_record, draft_record=draft_record,
-                published_record=published_record, object_version=ov,
-                tags=tags, metadata=file_md):
+        for _, res in file_copied.send(
+                source_record, source_record=source_record,
+                target_record=target_record, object_version=ov,
+                tags=tags, metadata=file_md,
+                source_record_context=source_record_context,
+                target_record_context=target_record_context):
             if res is False:
                 return False  # skip this file
 
@@ -477,6 +498,10 @@ class RecordsDraftState:
                 object_version=new_ob,
                 key=key,
                 value=value)
+
+        file_md['bucket'] = str(bucket.id)
+        file_md['file_id'] = str(new_ob.file_id)
+        file_md['version_id'] = str(new_ob.version_id)
 
         return True
 
@@ -490,7 +515,8 @@ class RecordsDraftState:
         return indexer._prepare_index(index, doctype)[0]
 
     def _update_published_record(self, published_pid, metadata,
-                                 timestamp, published_record_class):
+                                 timestamp, published_record_class,
+                                 draft_record_context):
         published_record = published_record_class.get_record(
             published_pid.object_uuid, with_deleted=True)
         # if deleted, revert to last non-deleted revision
@@ -498,15 +524,26 @@ class RecordsDraftState:
             revision_id = published_record.revision_id
             while published_record.model.json is None and revision_id > 0:
                 revision_id -= 1
-                published_record.revert(revision_id)
+                published_record = published_record.revert(revision_id)
 
         if not timestamp or published_record.updated < timestamp:
+            # do not propagate bucket and files as these have incorrect
+            # bucket etc
+            metadata.pop('_files', None)
+            metadata.pop('_bucket', None)
             published_record.update(metadata)
             if not published_record.get('$schema'):  # pragma no cover
                 logger.warning('Updated draft record does not have a $schema metadata. '
                                'Please use a Record implementation that adds $schema '
                                '(in validate() and update() method). Draft PID Type %s',
                                published_pid.pid_type)
+
+        self._copy_files_between_records(
+            draft_record_context.record, published_record,
+            draft_record_context, RecordContext(
+                record_pid=published_pid,
+                record=published_record
+            ))
 
         published_record.commit()
         after_publish_record.send(published_record,
@@ -535,14 +572,17 @@ class RecordsDraftState:
 
                 # and fetch the draft record and update its metadata
                 return self._update_draft_record(
-                    draft_pid, metadata, None, draft_record_class)
+                    draft_pid, metadata, None, draft_record_class,
+                    published_record_context)
 
             elif draft_pid.status == PIDStatus.REGISTERED:
                 # fetch the draft record and update its metadata
                 # if it is older than the published one
                 return self._update_draft_record(
                     draft_pid, metadata,
-                    published_record_context.record.updated, draft_record_class)
+                    published_record_context.record.updated, draft_record_class,
+                    published_record_context
+                )
 
             raise NotImplementedError('Can not unpublish record to draft record '
                                       'with pid status %s. Only registered or deleted '
@@ -558,10 +598,20 @@ class RecordsDraftState:
                                                 pid_value=published_pid.pid_value,
                                                 status=PIDStatus.REGISTERED,
                                                 object_type='rec', object_uuid=id)
+
+        self._copy_files_between_records(
+            published_record_context.record, draft_record,
+            published_record_context, RecordContext(
+                record_pid=draft_pid,
+                record=draft_record
+            )
+        )
+
         return draft_record, draft_pid
 
     def _update_draft_record(self, draft_pid, metadata,
-                             timestamp, draft_record_class):
+                             timestamp, draft_record_class,
+                             published_record_context):
         draft_record = draft_record_class.get_record(draft_pid.object_uuid,
                                                      with_deleted=True)
 
@@ -569,15 +619,26 @@ class RecordsDraftState:
         revision_id = draft_record.revision_id
         while draft_record.model.json is None and revision_id > 0:
             revision_id -= 1
-            draft_record.revert(revision_id)
+            draft_record = draft_record.revert(revision_id)
 
         if not timestamp or draft_record.updated < timestamp:
+            # do not overwrite files (different bucket etc
+            # and should not be modified in public)
+            metadata.pop('_files', None)
+            metadata.pop('_bucket', None)
             draft_record.update(metadata)
             if not draft_record['$schema']:  # pragma no cover
                 logger.warning('Updated draft record does not have a $schema metadata. '
                                'Please use a Record implementation that adds $schema '
                                '(for example in validate() method). Draft PID Type %s',
                                draft_pid.pid_type)
+
+        self._copy_files_between_records(
+            published_record_context.record, draft_record,
+            published_record_context, RecordContext(
+                record_pid=draft_pid,
+                record=draft_record
+            ))
 
         draft_record.commit()
 
@@ -600,12 +661,12 @@ class RecordsDraft(object):
         app.config['RECORDS_REST_ENDPOINTS'] = Endpoints(app, app.config.get('RECORDS_REST_ENDPOINTS', {}))
 
 
-@file_published.connect
-def replace_urls(sender, draft_record=None, published_record=None,
+@file_copied.connect
+def replace_urls(sender, source_record=None, target_record=None,
                  object_version=None, tags=None, metadata=None, **kwargs):
-    if hasattr(draft_record, 'canonical_url') and hasattr(published_record, 'canonical_url'):
-        draft_url = draft_record.canonical_url
-        published_url = published_record.canonical_url
+    if hasattr(source_record, 'canonical_url') and hasattr(target_record, 'canonical_url'):
+        draft_url = source_record.canonical_url
+        published_url = target_record.canonical_url
 
         if not draft_url.endswith('/'):
             draft_url += '/'
