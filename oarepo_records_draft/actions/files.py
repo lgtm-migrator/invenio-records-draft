@@ -1,7 +1,10 @@
+import sys
 import traceback
 
 import six
 from invenio_pidstore.models import PersistentIdentifier
+from invenio_records.models import RecordMetadata
+from invenio_rest.errors import RESTException
 from webargs import fields
 from webargs.flaskparser import use_kwargs
 from werkzeug.utils import import_string
@@ -9,17 +12,21 @@ from werkzeug.utils import import_string
 from oarepo_records_draft import current_drafts
 from oarepo_records_draft.types import RecordEndpointConfiguration
 
+import logging
+log = logging.getLogger('draft.files')
+
 try:
 
     from functools import wraps, lru_cache
 
-    from flask import jsonify, abort, url_for
+    from flask import jsonify, abort, url_for, Response, make_response
     from flask import request
     from flask.views import MethodView
     from invenio_db import db
     from invenio_records_rest.utils import deny_all
     from invenio_records_rest.views import pass_record
     from invenio_rest import ContentNegotiatedMethodView
+    import contextlib
 
     from invenio_files_rest.signals import file_uploaded as rest_file_uploaded, \
         file_downloaded as rest_file_downloaded, \
@@ -103,6 +110,25 @@ try:
         if indexer:
             indexer.index(record)
 
+    @contextlib.contextmanager
+    def locked_record(record):
+        # lock record row
+        from flask.globals import request
+        log.error('Trying to lock record %s: %s', record.id, request.path)
+        # with db.session.begin_nested():
+        cls = type(record)
+        obj = cls.model_cls.query.filter_by(id=record.id).\
+            filter(cls.model_cls.json != None).with_for_update().one()
+        log.error('Locked version is %s', obj.version_id)
+        try:
+            db.session.expire(obj)
+            locked_rec = cls.get_record(record.id)
+            log.error('Locked record %s %s', locked_rec.id, locked_rec.model.version_id)
+            yield locked_rec
+            log.error('Unlocked record %s %s', locked_rec.id, locked_rec.model.version_id)
+        except:
+            log.exception('Unlocked record with exception %s %s', locked_rec.id, locked_rec.model.version_id)
+            raise
 
     class FileResource(MethodView):
         view_name = '{0}_file'
@@ -132,22 +158,24 @@ try:
         @pass_record
         @need_file_permission('put_file_factory', missing_ok=True)
         def post(self, pid, record, key):
-            files = record.files
-            file_rec = files[key]
-            metadata = {}
-            metadata.update(request.form or {})
-            metadata.update(request.json or {})
-            file_before_metadata_modified.send(record, record=record, file=file_rec, pid=pid, files=files,
-                                               metadata=metadata)
-            for k, v in metadata.items():
-                file_rec[k] = v
+            # lock record row
+            with locked_record(record) as record:
+                files = record.files
+                file_rec = files[key]
+                metadata = {}
+                metadata.update(request.form or {})
+                metadata.update(request.json or {})
+                file_before_metadata_modified.send(record, record=record, file=file_rec, pid=pid, files=files,
+                                                   metadata=metadata)
+                for k, v in metadata.items():
+                    file_rec[k] = v
 
-            file_metadata_modified_before_flush.send(record, record=record, file=file_rec, pid=pid, files=files,
-                                                     metadata=metadata)
-            files.flush()
-            file_metadata_modified_before_commit.send(record, record=record, file=file_rec, pid=pid, files=files,
-                                                      metadata=metadata)
-            record.commit()
+                file_metadata_modified_before_flush.send(record, record=record, file=file_rec, pid=pid, files=files,
+                                                         metadata=metadata)
+                files.flush()
+                file_metadata_modified_before_commit.send(record, record=record, file=file_rec, pid=pid, files=files,
+                                                          metadata=metadata)
+                record.commit()
             db.session.commit()
             file_after_metadata_modified.send(record, record=record, file=file_rec, pid=pid, files=files,
                                               metadata=metadata)
@@ -157,15 +185,18 @@ try:
         @pass_record
         @need_file_permission('delete_file_factory')
         def delete(self, pid, record, key):
-            files = record.files
-            deleted_record = files[key]
-            deleted_record_version = deleted_record.get_version()
-            file_before_deleted.send(record, record=record, files=files, file=deleted_record, pid=pid)
-            del files[key]
-            file_deleted_before_flush.send(record, record=record, files=files, file=deleted_record, pid=pid)
-            files.flush()
-            file_deleted_before_commit.send(record, record=record, files=files, file=deleted_record, pid=pid)
-            record.commit()
+            # lock record row
+            with locked_record(record) as record:
+                files = record.files
+                deleted_record = files[key]
+                deleted_record_version = deleted_record.get_version()
+                file_before_deleted.send(record, record=record, files=files, file=deleted_record, pid=pid)
+                del files[key]
+                file_deleted_before_flush.send(record, record=record, files=files, file=deleted_record, pid=pid)
+                files.flush()
+                file_deleted_before_commit.send(record, record=record, files=files, file=deleted_record, pid=pid)
+                record.commit()
+
             db.session.commit()
             index_record(record)
             rest_file_deleted.send(deleted_record_version)
@@ -224,36 +255,44 @@ try:
         @use_kwargs(files_post_request)
         @need_file_permission('put_file_factory', missing_ok=True)
         def post(self, pid: PersistentIdentifier, record, key, multipart=False, multipart_content_type=None):
-            stream = None
-            content_type = 'application/octet-stream'
+            # lock record row
+            try:
+                with locked_record(record) as record:
+                    stream = None
+                    content_type = 'application/octet-stream'
 
-            if not multipart:
-                all_files = [v for v in request.files.values()]
-                if len(all_files) != 1:
-                    abort(400, 'Only one file expected')
+                    if not multipart:
+                        all_files = [v for v in request.files.values()]
+                        if len(all_files) != 1:
+                            abort(400, 'Only one file expected')
 
-                content_type = all_files[0].content_type
-                stream = all_files[0].stream
-            else:
-                if not multipart_content_type:
-                    abort(400, 'multipart_content_type not provided for multipart upload')
+                        content_type = all_files[0].content_type
+                        stream = all_files[0].stream
+                    else:
+                        if not multipart_content_type:
+                            abort(400, 'multipart_content_type not provided for multipart upload')
 
-                content_type = multipart_content_type
+                        content_type = multipart_content_type
 
-            # Construct additional file metadata props
-            form_props = request.form.to_dict(flat=False)
-            props = request.get_json() or {}
-            props.update(form_props)
-            props.pop('multipart_content_type', None)
-            props.pop('multipart', None)
-            props.pop('key', None)
+                    # Construct additional file metadata props
+                    form_props = request.form.to_dict(flat=False)
+                    props = request.get_json() or {}
+                    props.update(form_props)
+                    props.pop('multipart_content_type', None)
+                    props.pop('multipart', None)
+                    props.pop('key', None)
 
-            return create_record_file(pid, record,
-                                      key, stream,
-                                      content_type,
-                                      props,
-                                      self.endpoint_code)
-
+                    ret = create_record_file(pid, record,
+                                              key, stream,
+                                              content_type,
+                                              props,
+                                              self.endpoint_code)
+                    db.session.commit()
+                    log.error('Committed record %s:%s', record.id, record.model.version_id)
+                return ret
+            except Exception as e:
+                traceback.print_exc()
+                return make_response(jsonify(status=500, message=str(e)), 500)
 
     def create_record_file(pid, record, key, stream, content_type, props, endpoint_code):
 
@@ -261,7 +300,6 @@ try:
         file_before_uploaded.send(record, record=record, key=key, files=files, pid=pid)
 
         endpoint: RecordEndpointConfiguration = current_drafts.endpoint_for_record(record)
-
         for uploader in current_drafts.uploaders:
             result = uploader(record=record, key=key, files=files, pid=pid, request=request,
                               endpoint=endpoint,
@@ -288,7 +326,6 @@ try:
         files.flush()
         file_uploaded_before_commit.send(record, record=record, file=record.files[key], files=files, pid=pid)
         record.commit()
-        db.session.commit()
         index_record(record)
         version = record.files[key].get_version()
         rest_file_uploaded.send(version)
