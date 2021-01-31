@@ -9,7 +9,7 @@ OAREPO_VERSION = os.environ.get('OAREPO_VERSION', '3.3')
 
 install_requires = [
     'wrapt>=1.11.2',
-    f'oarepo~={OAREPO_VERSION}',
+#    f'oarepo~={OAREPO_VERSION}',
     'oarepo_validate',
     'deepmerge'
 ]
