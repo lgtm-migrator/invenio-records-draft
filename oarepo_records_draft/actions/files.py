@@ -12,8 +12,8 @@ from werkzeug.utils import import_string
 from oarepo_records_draft import current_drafts
 from oarepo_records_draft.types import RecordEndpointConfiguration
 
-import logging
-log = logging.getLogger('draft.files')
+# import logging
+# log = logging.getLogger('draft.files')
 
 try:
 
@@ -114,20 +114,18 @@ try:
     def locked_record(record):
         # lock record row
         from flask.globals import request
-        log.error('Trying to lock record %s: %s', record.id, request.path)
-        # with db.session.begin_nested():
+        # log.error('Trying to lock record %s: %s', record.id, request.path)
         cls = type(record)
         obj = cls.model_cls.query.filter_by(id=record.id).\
             filter(cls.model_cls.json != None).with_for_update().one()
-        log.error('Locked version is %s', obj.version_id)
         try:
             db.session.expire(obj)
             locked_rec = cls.get_record(record.id)
-            log.error('Locked record %s %s', locked_rec.id, locked_rec.model.version_id)
+            # log.error('Locked version is %s %s', locked_rec.id, locked_rec.model.version_id)
             yield locked_rec
-            log.error('Unlocked record %s %s', locked_rec.id, locked_rec.model.version_id)
+            # log.error('Unlocked record %s %s', locked_rec.id, locked_rec.model.version_id)
         except:
-            log.exception('Unlocked record with exception %s %s', locked_rec.id, locked_rec.model.version_id)
+            # log.exception('Unlocked record with exception %s %s', locked_rec.id, locked_rec.model.version_id)
             raise
 
     class FileResource(MethodView):
@@ -288,10 +286,10 @@ try:
                                               props,
                                               self.endpoint_code)
                     db.session.commit()
-                    log.error('Committed record %s:%s', record.id, record.model.version_id)
+                    # log.error('Committed record %s:%s', record.id, record.model.version_id)
                 return ret
             except Exception as e:
-                traceback.print_exc()
+                # log.exception('Caught exception')
                 return make_response(jsonify(status=500, message=str(e)), 500)
 
     def create_record_file(pid, record, key, stream, content_type, props, endpoint_code):
