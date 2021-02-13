@@ -18,7 +18,7 @@ RUNNING_IN_TRAVIS = os.environ.get('TRAVIS', False)
 def after_validation(sender, record=None, context=None, result=None, error=None, **validate_kwargs):
     # update the result even if there is an error
     if validate_kwargs.get('draft_validation', False):
-        if error and error.valid_data:
+        if error and getattr(error, 'valid_data', None):
             r = dict(record)
             draft_merger.merge(r, error.valid_data)
             record.update(r)
