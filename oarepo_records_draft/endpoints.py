@@ -142,21 +142,22 @@ def setup_draft_endpoint(app, published_code, draft_code, published, draft):
     if 'list_route' not in draft:
         draft['list_route'] = '/draft' + published['list_route']
 
-    if 'item_route' not in published:
+    if 'item_route' not in published or ':pid_value' not in published['item_route']:
         record_pid = 'pid(%s,record_class="%s")' % (published['pid_type'], published['record_class'])
-        route = published['list_route']
+        route = published['list_route'] if 'item_route' not in published else published['item_route']
         if not route.endswith('/'):
             route += '/'
         published['item_route'] = route + '<{0}:pid_value>'.format(record_pid)
 
-    if 'item_route' not in draft:
+    if 'item_route' not in draft or ':pid_value' not in draft['item_route']:
         if not isinstance(draft['record_class'], str):
             raise ValueError('item_route is not specified in %s and %s["record_class"] '
                              'is not string, so can not generate item_route for you' % (draft_code, draft_code))
-        replaced_pid = re.sub(r'<pid\(.*?,', f'<pid({draft["pid_type"]},', published['item_route'])
-        replaced_record_class = re.sub(r'record_class\s*=\s*".*?"', f'record_class="{draft["record_class"]}"',
-                                       replaced_pid)
-        draft['item_route'] = '/draft' + replaced_record_class
+        record_pid = 'pid(%s,record_class="%s")' % (draft['pid_type'], draft['record_class'])
+        route = draft['list_route'] if 'item_route' not in draft else draft['item_route']
+        if not route.endswith('/'):
+            route += '/'
+        draft['item_route'] = route + '<{0}:pid_value>'.format(record_pid)
 
     if 'pid_fetcher' not in published:
         raise ValueError('pid_fetcher not in %s' % published_code)
