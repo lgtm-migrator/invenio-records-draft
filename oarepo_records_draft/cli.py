@@ -80,7 +80,7 @@ def reindex_records(pid_type, pid, save, verbose, processes, bulk_size):
                 errors += len(res_errors)
                 if verbose:
                     for err in res_errors:
-                        print(json.dumps(err))
+                        print(json.dumps(err, default=lambda x: str(x)))
         end = datetime.datetime.now()
         if verbose:
             print(f'Total {ok} ok, {errors} errors in {end - start}')
@@ -109,10 +109,11 @@ def bulk_indexer(pid_type, object_uuids, req_timeout):
                     return indexer._index_action({"id": record_uuid})
                 except Exception as e:
                     exceptions.append({
-                        'record_uuid': record_uuid,
+                        'record_uuid': str(record_uuid),
                         'message': str(e),
                         'traceback': traceback.format_exc(),
                     })
+                return {}
 
             recs = (get_indexing_data(record_uuid) for record_uuid in object_uuids)
 
@@ -130,10 +131,30 @@ def bulk_indexer(pid_type, object_uuids, req_timeout):
                 *exceptions
             ]
     except Exception as e:
-        return 0, [{
-            'message': str(e),
-            'traceback': traceback.format_exc()
-        }]
+        if len(object_uuids) == 1:
+            return 0, [{
+                'message': str(e),
+                'traceback': traceback.format_exc()
+            }, *exceptions]
+        else:
+            # index what could be indexed
+            ok = 0
+            errors = []
+            if len(object_uuids) > 4:
+                # split into two halves and try for each half
+                mid = len(object_uuids) / 2
+                object_uuids = [
+                    object_uuids[:mid],
+                    object_uuids[mid:]
+                ]
+            else:
+                # try for each element
+                object_uuids = [[x] for x in object_uuids]
+            for uuids in object_uuids:
+                p_ok, p_errors = bulk_indexer(pid_type, uuids, req_timeout)
+                ok += p_ok
+                errors.extend(p_errors)
+            return ok, errors
 
 
 def index_single_pid(pid, verbose):
