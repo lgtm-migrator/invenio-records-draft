@@ -36,9 +36,13 @@ class RecordEndpointConfiguration:
     def record_class(self):
         return self.resolve('record_class')
 
+    @property
+    def indexer_class(self):
+        return self.resolve('indexer_class', 'invenio_indexer.api.RecordIndexer')
+
     @lru_cache(maxsize=32)
-    def resolve(self, name):
-        clz = self.extra.get(name) or self.rest.get(name)
+    def resolve(self, name, default=None):
+        clz = self.extra.get(name) or self.rest.get(name, default)
         if not clz:
             return None
         return obj_or_import_string(clz)
