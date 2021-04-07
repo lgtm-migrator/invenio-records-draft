@@ -11,7 +11,8 @@ install_requires = [
     'wrapt>=1.11.2',
 #    f'oarepo~={OAREPO_VERSION}',
     'oarepo_validate',
-    'deepmerge'
+    'deepmerge',
+    'NamedAtomicLock'
 ]
 
 tests_require = [
