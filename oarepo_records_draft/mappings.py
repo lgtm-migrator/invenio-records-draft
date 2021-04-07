@@ -1,6 +1,8 @@
 import os
 import json
 
+from NamedAtomicLock import NamedAtomicLock
+
 from oarepo_records_draft.types import DraftPublishedRecordConfiguration, DraftManagedRecords
 
 
@@ -31,8 +33,17 @@ def process(mappings, aliases, base_dir, mapping, draft_mapping):
     properties = mapping_data['mappings'].setdefault('properties', {})
     properties.update(draft_validation_json)
 
-    with open(dest_file, 'w') as f:
-        json.dump(mapping_data, f, ensure_ascii=False, indent=4)
+    mapping_to_save = json.dumps(mapping_data, ensure_ascii=False, indent=4)
+
+    do_save = True
+    if os.path.exists(dest_file):
+        with open(dest_file, 'r') as f:
+            existing = f.read()
+            if existing == mapping_to_save:
+                do_save = False
+    if do_save:
+        with open(dest_file, 'w') as f:
+            f.write(mapping_to_save)
 
     mappings[draft_mapping] = dest_file
     aliases['draft-' + find_alias(aliases, mapping)] = {
@@ -44,17 +55,21 @@ def setup_draft_mappings(managed_records: DraftManagedRecords, app):
     mappings = app.extensions['invenio-search'].mappings
     aliases = app.extensions['invenio-search'].aliases
 
-    transformed_mappings_dir = os.path.join(app.instance_path, 'mappings')
-    if not os.path.exists(transformed_mappings_dir):
-        os.makedirs(transformed_mappings_dir)
+    lock = NamedAtomicLock('oarepo-records-draft')
+    lock.acquire()
+    try:
+        transformed_mappings_dir = os.path.join(app.instance_path, 'mappings')
+        if not os.path.exists(transformed_mappings_dir):
+            os.makedirs(transformed_mappings_dir)
 
-    for rec in list(managed_records):
-        for schema, index in rec.draft.schema_indices.items():
-            if index not in mappings:
-                process(mappings, aliases, transformed_mappings_dir,
-                        rec.published.get_index(schema),
-                        index)
-
+        for rec in list(managed_records):
+            for schema, index in rec.draft.schema_indices.items():
+                if index not in mappings:
+                    process(mappings, aliases, transformed_mappings_dir,
+                            rec.published.get_index(schema),
+                            index)
+    finally:
+        lock.release()
 
 draft_validation_json = {
     "oarepo:draft": {
