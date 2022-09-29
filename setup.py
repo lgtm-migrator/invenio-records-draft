@@ -5,11 +5,11 @@ from os import path
 
 from setuptools import setup
 
-OAREPO_VERSION = os.environ.get('OAREPO_VERSION', '3.3')
+OAREPO_VERSION = os.environ.get('OAREPO_VERSION', '3.3.0')
 
 install_requires = [
     'wrapt>=1.11.2',
-#    f'oarepo~={OAREPO_VERSION}',
+    #    f'oarepo~={OAREPO_VERSION}',
     'oarepo_validate',
     'deepmerge',
     'NamedAtomicLock'

@@ -22,3 +22,8 @@ exclude tests/schemas/test
 exclude sample
 include *.rst
 exclude *.sh
+recursive-exclude .devcontainer *
+exclude Dockerfile
+exclude .dockerignore
+exclude .python-version
+recursive-exclude .vscode *
