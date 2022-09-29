@@ -14,9 +14,9 @@ services:
     image: postgres:9.6
     restart: "always"
     environment:
-      - "POSTGRES_USER=oarepo-s3"
-      - "POSTGRES_PASSWORD=oarepo-s3"
-      - "POSTGRES_DB=oarepo-s3"
+      - "POSTGRES_USER=oarepo-records-draft"
+      - "POSTGRES_PASSWORD=oarepo-records-draft"
+      - "POSTGRES_DB=oarepo-records-draft"
   mq:
     image: rabbitmq:3-management
     restart: "always"
