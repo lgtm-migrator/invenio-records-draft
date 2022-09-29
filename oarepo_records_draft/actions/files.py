@@ -48,7 +48,6 @@ try:
                                                 required=False)
     }
 
-
     @lru_cache(maxsize=32)
     def apply_permission(perm_or_factory):
         if isinstance(perm_or_factory, six.string_types):
@@ -61,8 +60,8 @@ try:
 
         return func
 
-
     # adopted from invenio-records-rest
+
     def verify_file_permission(view, permission_factory, record, key, missing_ok):
         if key not in record.files and not missing_ok:
             abort(404)
@@ -80,7 +79,6 @@ try:
             if not current_user.is_authenticated:
                 abort(401)
             abort(403)
-
 
     def need_file_permission(factory_name, missing_ok=False):
         def permission_builder(f):
@@ -221,7 +219,6 @@ try:
                 return prop(record=record, obj=obj, key=key)
             return prop
 
-
     class FileListResource(ContentNegotiatedMethodView):
 
         view_name = '{0}_files'
@@ -274,17 +271,17 @@ try:
 
                     # Construct additional file metadata props
                     form_props = request.form.to_dict(flat=False)
-                    props = request.get_json() or {}
+                    props = request.get_json() if request.is_json else {}
                     props.update(form_props)
                     props.pop('multipart_content_type', None)
                     props.pop('multipart', None)
                     props.pop('key', None)
 
                     ret = create_record_file(pid, record,
-                                              key, stream,
-                                              content_type,
-                                              props,
-                                              self.endpoint_code)
+                                             key, stream,
+                                             content_type,
+                                             props,
+                                             self.endpoint_code)
                     db.session.commit()
                     # log.error('Committed record %s:%s', record.id, record.model.version_id)
                 return ret
@@ -309,7 +306,7 @@ try:
                 break
         else:
             files[key] = stream
-            response_creator = lambda: record.files[key].dumps()
+            def response_creator(): return record.files[key].dumps()
 
         file_rec = files[key]
         for k, v in props.items():
