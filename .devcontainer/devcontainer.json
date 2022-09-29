@@ -44,7 +44,7 @@
   // The 'service' property is the name of the service for the container that VS Code should
   // use. Update this value and .devcontainer/docker-compose.yml to the real service name.
   "service": "app",
-  "postCreateCommand": "pip3 install --force-reinstall -e '.[tests]' && pip install ./sample",
+  "postCreateCommand": "pip3 install --force-reinstall -e '.[tests]' && pip install -e ./sample",
   // The optional 'workspaceFolder' property is the path VS Code should open by default when
   // connected. This is typically a file mount in .devcontainer/docker-compose.yml
   "workspaceFolder": "/workspace"

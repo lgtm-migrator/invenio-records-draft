@@ -22,6 +22,12 @@ services:
     environment:
       BROKER_URL: amqp://mq:5672/
       CELERY_BROKER_URL: amqp://mq:5672/
+      ACCOUNTS_SESSION_REDIS_URL: redis://cache:6379/1
+      CACHE_REDIS_URL: redis://cache:6379/0
+      CACHE_TYPE: redis
+      CELERY_RESULT_BACKEND: redis://cache:6379/2
+      SEARCH_ELASTIC_HOSTS: "[es]" 
+      INVENIO_SECRET_KEY: CHANGE_ME
     volumes:
       # Update this to wherever you want VS Code to mount the folder of your project
       - .:/workspace:cached

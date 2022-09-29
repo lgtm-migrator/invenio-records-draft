@@ -8,29 +8,27 @@ version: '2.3'
 services:
   cache:
     image: redis
-    restart: "always"
+    restart: 'always'
     read_only: true
   db:
     image: postgres:9.6
-    restart: "always"
+    restart: 'always'
     environment:
-      - "POSTGRES_USER=oarepo-records-draft"
-      - "POSTGRES_PASSWORD=oarepo-records-draft"
-      - "POSTGRES_DB=oarepo-records-draft"
+      - 'POSTGRES_USER=oarepo-records-draft'
+      - 'POSTGRES_PASSWORD=oarepo-records-draft'
+      - 'POSTGRES_DB=oarepo-records-draft'
   mq:
     image: rabbitmq:3-management
-    restart: "always"
+    restart: 'always'
   es:
-    image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.2.0
-    restart: "always"
+    image: elasticsearch:7.17.6
+    restart: 'always'
     environment:
       - bootstrap.memory_lock=true
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - 'ES_JAVA_OPTS=-Xms512m -Xmx512m'
       - discovery.type=single-node
     ulimits:
       memlock:
         soft: -1
         hard: -1
     mem_limit: 1g
-    ports:
-    - 127.0.0.1:9200:9200
